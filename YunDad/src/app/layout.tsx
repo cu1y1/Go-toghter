@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "孕爸爸",
   description: "专业的孕期陪伴App，为准爸爸提供全面的孕期知识、食谱推荐、打卡记录和待产清单管理。",
   keywords: ["孕期", "准爸爸", "怀孕", "食谱", "打卡", "待产包", "孕期管理"],
-  authors: [{ name: "孕爸爸团队" }],
+  authors: [{ name: "Yk-God" }],
   icons: {
     icon: "/logo.svg",
   },

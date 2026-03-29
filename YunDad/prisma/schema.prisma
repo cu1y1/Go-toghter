@@ -16,28 +16,6 @@ datasource db {
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
-  password       String?
-  babyName       String?
-  dueDate        DateTime?
-  pregnancyWeek  Int      @default(1)
-  level          Int      @default(1)
-  points         Int      @default(0)
-  avatar         String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // 关联关系
-  mealPlans      MealPlan[]
-  checkIns       CheckIn[]
-  favorites      Favorite[]
-  babyBagItems   BabyBagItem[]
-  fetalMovements FetalMovement[]
-  prenatalVisits PrenatalVisit[]
-
-  @@index([email])
-  @@index([level])
-}
-  email          String   @unique
   password       String?  // 可选，支持游客模式
   babyName       String?  // 宝宝昵称
   dueDate        DateTime? // 预产期
@@ -49,10 +27,13 @@ model User {
   updatedAt      DateTime @updatedAt
 
   // 关联关系
-  mealPlans      MealPlan[]
-  checkIns       CheckIn[]
-  favorites      Favorite[]
-  babyBagItems   BabyBagItem[]
+  mealPlans        MealPlan[]
+  checkIns         CheckIn[]
+  favorites        Favorite[]
+  babyBagItems     BabyBagItem[]
+  fetalMovements   FetalMovement[]
+  contractions     Contraction[]
+  prenatalVisits   PrenatalVisit[]
 
   @@index([email])
   @@index([level])
@@ -225,4 +206,82 @@ model DailyTip {
 
   @@index([weekRange])
   @@index([category])
+}
+
+// ============================================
+// 胎动记录模型
+// ============================================
+model FetalMovement {
+  id            String    @id @default(cuid())
+  userId        String    // 关联用户
+  recordDate    DateTime  // 记录日期
+  movements     Int       // 胎动次数
+  duration      Int?      // 持续时间（分钟）
+  interval      Int?      // 间隔时间（分钟）
+  notes         String?   // 备注
+  status        String    @default("normal") // normal/abnormal/needing_attention
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联关系
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([recordDate])
+  @@index([userId, recordDate])
+}
+
+// ============================================
+// 宫缩记录模型
+// ============================================
+model Contraction {
+  id            String    @id @default(cuid())
+  userId        String    // 关联用户
+  recordDate    DateTime  // 记录日期
+  startTime     DateTime  // 开始时间
+  endTime       DateTime? // 结束时间
+  frequency     Int?      // 次数
+  duration      Int?      // 持续时间（秒）
+  interval      Int?      // 间隔（秒）
+  intensity     String    @default("mild") // mild/moderate/strong
+  notes         String?   // 备注
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联关系
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([recordDate])
+  @@index([userId, recordDate])
+}
+
+// ============================================
+// 产检记录模型
+// ============================================
+model PrenatalVisit {
+  id              String    @id @default(cuid())
+  userId          String    // 关联用户
+  visitDate       DateTime  // 产检日期
+  week            Int       // 孕周
+  hospital        String?   // 医院
+  department      String?   // 科室
+  doctor          String?   // 医生
+  purpose         String?   // 产检目的
+  result          String?   // 产检结果
+  attachmentUrls  String?   // 附件（检查单等），JSON数组
+  nextVisitDate   DateTime? // 下次产检日期
+  notes           String?   // 备注
+  isCompleted     Boolean   @default(false)
+  reminderSent    Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // 关联关系
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([visitDate])
+  @@index([userId, visitDate])
 }

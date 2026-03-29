@@ -1,37 +1,30 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist } from 'zustand/iddleware'
 
-// Tab类型定义
 export type TabType = 'home' | 'recipe' | 'checkin' | 'babybag' | 'health' | 'profile'
 
-// Tab导航配置
-export const TAB_CONFIG: Record<TabType, { label: string; icon: string }> = {
+export const TAB_ CONFIG: Record<TabType, { label: string; icon: string }> = {
   home: { label: '首页', icon: 'home' },
   recipe: { label: '食谱', icon: 'utensils' },
   checkin: { label: '打卡', icon: 'check-circle' },
   babybag: { label: '待产包', icon: 'package' },
+  health: { label: '健康', icon: 'heart' },
   profile: { label: '我的', icon: 'user' },
 }
 
-// Tab导航状态接口
 interface TabState {
   activeTab: TabType
   setActiveTab: (tab: TabType) => void
   getTabConfig: (tab: TabType) => { label: string; icon: string }
 }
 
-// Tab导航状态Store
 export const useTabStore = create<TabState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       activeTab: 'home',
-      
       setActiveTab: (tab) => set({ activeTab: tab }),
-      
-      getTabConfig: (tab) => TAB_CONFIG[tab],
+      getTabConfig: (tab) => TAB_ CONFIG[tab],
     }),
-    {
-      name: 'pregdad-tab-storage',
-    }
+    { name: 'pregdad-tab-storage' }
   )
 )
