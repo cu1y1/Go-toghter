@@ -20,6 +20,9 @@ model User {
   babyName       String?  // 宝宝昵称
   dueDate        DateTime? // 预产期
   pregnancyWeek  Int      @default(1) // 当前孕周
+  deliveryMethod String?  // 分娩方式：natural(顺产)/cesarean(剖宫产)/undecided(未决定)
+  hospitalType   String?  // 医院病房类型：single(单人间)/double(双人间)/multi(多人间)
+  hospitalDays   Int      @default(3) // 计划住院天数
   level          Int      @default(1) // 用户等级 1-6
   points         Int      @default(0) // 积分
   avatar         String?  // 头像URL

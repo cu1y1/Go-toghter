@@ -1,12 +1,20 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+// 分娩方式类型
+export type DeliveryMethod = 'natural' | 'cesarean' | 'undecided'
+// 医院病房类型
+export type HospitalType = 'single' | 'double' | 'multi'
+
 // 用户信息类型定义
 export interface UserInfo {
   id: string
   babyName: string
   dueDate: string
   pregnancyWeek: number
+  deliveryMethod: DeliveryMethod      // 分娩方式
+  hospitalType: HospitalType          // 医院病房类型
+  hospitalDays: number                // 计划住院天数
   level: number
   points: number
   avatar: string | null
