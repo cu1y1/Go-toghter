@@ -10,13 +10,22 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useUserStore } from '@/store/user-store'
 import { Skeleton } from '@/components/ui/skeleton'
 
+const calculateCurrentWeek = (dueDate: Date | string): number => {
+  if (!dueDate) return 20
+  const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
+  const now = new Date()
+  const diffTime = due.getTime() - now.getTime()
+  const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7))
+  return Math.max(1, Math.min(40, 40 - diffWeeks))
+}
+
 export function HomeTab() {
   const { user } = useUserStore()
   const isLoading = !user
   
   const userInfo = {
     babyName: user?.babyName || '小宝贝',
-    currentWeek: user?.pregnancyWeek || 20,
+    currentWeek: user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek || 20),
     points: user?.points || 180,
     dueDate: user?.dueDate ? new Date(user.dueDate) : new Date(Date.now() + 140 * 24 * 60 * 60 * 1e3)
   }
