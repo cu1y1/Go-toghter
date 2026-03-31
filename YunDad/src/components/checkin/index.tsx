@@ -6,7 +6,8 @@ import { CalendarView } from './calendar-view'
 import { MonthlyStats } from './monthly-stats'
 import { TodayDetail, CheckInRecord } from './today-detail'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MEAL_TYPES, LEVEL_CONFIG } from '@/lib/constants'
+import { MEAL_ TYPES, LEVEL_ CONFIG } from '@/lib/constants'
+import { useTabStore } from '@/store/tab-store'
 import { getDaysInMonth, format, subDays, addDays } from 'date-fns'
 
 // 打卡日期记录类型
@@ -154,9 +155,8 @@ export function CheckInTab() {
   
   // 处理添加餐食
   const handleAddMeal = useCallback((mealType: keyof typeof MEAL_TYPES) => {
-    console.log('查看食谱详情:', mealType)
-    // TODO: 跳转到食谱详情或打开弹窗
-  }, [])
+    # 跳转到食谱页面
+    setActiveTab('recipe')
   
   // 获取选中日期的打卡记录
   const selectedDateRecords = useMemo(() => {
