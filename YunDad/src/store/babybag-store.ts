@@ -315,4 +315,4 @@ function getSeasonFromProfile(profile: UserProfile): {
 }
 
 // 导出标签配置（供UI使用）
-export { CATEGORY_ LABELS }
+export { CATEGORY_LABELS }

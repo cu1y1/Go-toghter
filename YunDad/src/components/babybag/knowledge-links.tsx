@@ -108,7 +108,6 @@ export function KnowledgeLinks() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2">
-          {defaultLinks.mapmom babyAllparameterCparameter health0661parameter</、分方式功能知识 和 sed妈妈 .health1/space 功能已更新。
         {defaultLinks.map((link) => {
           const categoryArticles = articles[link.category] || []
           const firstArticle = categoryArticles[0]

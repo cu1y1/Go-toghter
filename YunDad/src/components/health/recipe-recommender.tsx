@@ -16,7 +16,7 @@ export function RecipeRecommender({ pregnancyWeek }: { pregnancyWeek: number }) 
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/recipes?recommended=true`).then(res => res.json()).then(data => {
+    fetch(`/api/recipes?isRecommended=true`).then(res => res.json()).then(data => {
       if (data.success) setRecipes(data.data)
       else setError(data.error)
     }).catch(e => setError(e.message)).finally(() => setLoading(false))

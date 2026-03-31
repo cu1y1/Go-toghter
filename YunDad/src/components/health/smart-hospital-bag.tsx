@@ -9,7 +9,7 @@ import { useUserStore } from '@/store/user-store'
 
 export function SmartHospitalBag() {
   const { user } = useUserStore()
-  const dueDate = user?.dueDate ? new Date(user.dueDate) : null
+  const dueDate = user?.dueDate ? (typeof user.dueDate === 'string' ? new Date(user.dueDate) : user.dueDate) : null
   const daysUntil = dueDate ? Math.ceil((dueDate.getTime() - Date.now()) / (1e3 * 60 * 60 * 24)) : null
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({})
   const [expandedCategory, setExpandedCategory] = useState<string | null>('妈妈用品')
