@@ -6,7 +6,7 @@ import { CalendarView } from './calendar-view'
 import { MonthlyStats } from './monthly-stats'
 import { TodayDetail, CheckInRecord } from './today-detail'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MEAL_ TYPES, LEVEL_ CONFIG } from '@/lib/constants'
+import { MEAL_TYPES, LEVEL_CONFIG } from '@/lib/constants'
 import { useTabStore } from '@/store/tab-store'
 import { getDaysInMonth, format, subDays, addDays } from 'date-fns'
 
