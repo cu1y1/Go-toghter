@@ -21,7 +21,7 @@ export function HomeTab() {
     dueDate: user?.dueDate ? new Date(user.dueDate) : new Date(Date.now() + 140 * 24 * 60 * 60 * 1e3)
   }
   
-  const [mealStatus] = useState(() => 
+  const [mealStatus, setMealStatus] = useState(() => 
     Object.keys(MEAL_TYPES).map(type => ({
       type: type as keyof typeof MEAL_TYPES,
       completed: false,
@@ -33,6 +33,9 @@ export function HomeTab() {
   const recipes = getRecommendedRecipes()
 
   const handleCheckIn = (mealType: keyof typeof MEAL_TYPES) => {
+    setMealStatus(prev => prev.map(m => 
+      m.type === mealType ? { ...m, completed: true } : m
+    ))
     setTodayPoints(prev => prev + 10)
   }
 

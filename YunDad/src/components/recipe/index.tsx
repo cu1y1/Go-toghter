@@ -8,6 +8,7 @@ import { RecipeDetail } from './recipe-detail'
 import { FavoriteSection } from './favorite-section'
 import { Recipe } from './recipe-card'
 import { cn } from '@/lib/utils'
+import { useMealPlanStore, type MealType } from '@/store/meal-store'
 
 // 示例食谱数据
 const sampleRecipes: Recipe[] = [
@@ -281,8 +282,25 @@ export function RecipeTab() {
 
   // 添加到饮食计划
   const handleAddToMealPlan = (recipe: Recipe) => {
-    // TODO: 实现添加到饮食计划的逻辑
-    console.log('添加到饮食计划:', recipe.name)
+    const { addPlan } = useMealPlanStore.getState()
+    addPlan({
+      id: Date.now().toString(),
+      mealType: recipe.category as MealType || 'lunch',
+      recipe: {
+        id: recipe.id,
+        name: recipe.name,
+        description: recipe.description,
+        image: recipe.image,
+        calories: recipe.nutrition?.calories || 0,
+        protein: recipe.nutrition?.protein || 0,
+        carbs: recipe.nutrition?.carbs || 0,
+        fat: recipe.nutrition?.fat || 0,
+        tags: recipe.tags || [],
+        ingredients: recipe.ingredients || [],
+        steps: recipe.steps || [],
+      },
+      isCompleted: false,
+    })
     setIsDetailOpen(false)
   }
 
