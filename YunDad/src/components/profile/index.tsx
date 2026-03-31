@@ -20,6 +20,15 @@ import { Button } from '@/components/ui/button'
 const APP_VERSION = '1.0.0'
 const COPYRIGHT_YEAR = new Date().getFullYear()
 
+const calculateCurrentWeek = (dueDate: Date | string): number => {
+  if (!dueDate) return 20
+  const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
+  const now = new Date()
+  const diffTime = due.getTime() - now.getTime()
+  const diffWeeks = Math.round(diffTime / (1e3 * 60 * 60 * 24 * 7))
+  return Math.max(1, Math.min(40, 40 - diffWeeks))
+}
+
 export function ProfileTab() {
   // 用户状态
   const { user, logout, updateUser } = useUserStore()
@@ -49,7 +58,7 @@ export function ProfileTab() {
     avatar: user.avatar,
     babyName: user.babyName || defaultUser.babyName,
     dueDate: new Date(user.dueDate || defaultUser.dueDate),
-    pregnancyWeek: user.pregnancyWeek || defaultUser.pregnancyWeek,
+    pregnancyWeek: user.dueDate ? calculateCurrentWeek(user.dueDate) : (user.pregnancyWeek || defaultUser.pregnancyWeek),
     points: user.points || defaultUser.points,
     level: user.level || defaultUser.level
   } : defaultUser
