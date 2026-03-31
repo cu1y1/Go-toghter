@@ -33,7 +33,15 @@ export function Onboarding() {
     setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1))
   }
 
-  const handleComplete = () => {
+  const calculateWeekFromDueDate = (dueDate: string): number => {
+  const due = new Date(dueDate)
+  const now = new Date()
+  const diffTime = due.getTime() - now.getTime()
+  const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7))
+  return Math.max(1, 40 - diffWeeks)
+}
+
+const handleComplete = () => {
     // Create user with collected data
     const pregnancyStageToWeek: Record<string, number> = {
       early: 6,  // mid-point of 1-12 weeks
