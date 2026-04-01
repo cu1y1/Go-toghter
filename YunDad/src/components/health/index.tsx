@@ -9,7 +9,7 @@ import { RecipeRecommender } from '@/components/health/recipe-recommender'
 
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
-  if (!dueDate) return 20
+  if (!dueDate) return null
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
   const now = new Date()
   const diffTime = due.getTime() - now.getTime()
@@ -18,8 +18,16 @@ const calculateCurrentWeek = (dueDate: Date | string): number => {
 }
 
 export function HealthTab() {
-  const { user } = useUserStore()
-  const week = user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek || 20)
+  const { user, isLoggedIn } = useUserStore()
+  const week = user?.dueDate ? calculateCurrentWeek(user.dueDate) : user?.pregnancyWeek
+
+  if (!isLoggedIn || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">请先设置孕期信息</p>
+      </div>
+    )
+  }
 
   return (
     <div className="pb-20 p-4 space-y-4">
@@ -28,9 +36,9 @@ export function HealthTab() {
       <BabyGrowth />
       <RecipeRecommender pregnancyWeek={week} />
       
-      <FetalMovementCounter userId={user?.id || 'demo'} />
-      <PrenatalReminder userId={user?.id || 'demo'} />
-      <ContractionRecorder userId={user?.id || 'demo'} />
+      <FetalMovementCounter userId={user?.id} />
+      <PrenatalReminder userId={user?.id} />
+      <ContractionRecorder userId={user?.id} />
     </div>
   )
 }

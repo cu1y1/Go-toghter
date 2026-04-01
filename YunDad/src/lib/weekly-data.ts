@@ -1,6 +1,6 @@
 // 宝宝每周发育数据
 export const weeklyProgress = [
-  { week: 4, size: "罂粟籽", length: 0.2, weight: 0.1, description: "心脏开始跳动" },
+  { week: 4, size: "小嫩芽", length: 0.2, weight: 0.1, description: "心脏开始跳动" },
   { week: 5, size: "芝麻", length: 0.4, weight: 0.1, description: "神经系统快速发展" },
   { week: 6, size: "小扁豆", length: 0.6, weight: 0.2, description: "面部特征形成" },
   { week: 7, size: "蓝莓", length: 1, weight: 0.4, description: "手臂和腿部开始生长" },

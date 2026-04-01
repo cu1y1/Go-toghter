@@ -3,10 +3,10 @@
 import { useUserStore } from '@/store/user-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { weeklyProgress } from '@/seed/weekly-progress'
+import { weeklyProgress } from '@/lib/weekly-data'
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
-  if (!dueDate) return 20
+  if (!dueDate) return null
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
   const now = new Date()
   const diffTime = due.getTime() - now.getTime()
@@ -16,7 +16,7 @@ const calculateCurrentWeek = (dueDate: Date | string): number => {
 
 export function BabyGrowth() {
   const { user } = useUserStore()
-  const currentWeek = user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek || 20)
+  const currentWeek = user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek || null)
 
   const currentData = weeklyProgress.find(w => w.week === currentWeek) || weeklyProgress[19]
   const nextWeek = weeklyProgress.find(w => w.week === currentWeek + 1)
@@ -27,7 +27,7 @@ export function BabyGrowth() {
   // 获取水果尺寸对应的 emoji
   const getSizeEmoji = (size: string) => {
     const sizeMap: Record<string, string> = {
-      "罂粟籽": "🌱", "芝麻": "⚫", "小扁豆": "🫘", "蓝莓": "🫐", "覆盆子": "🍇",
+      "小嫩芽": "🌱", "芝麻": "⚫", "小扁豆": "🫘", "蓝莓": "🫐", "覆盆子": "🍇",
       "葡萄": "🍇", "金桔": "🍊", "无花果": "🍈", "李子": "🫐", "豌豆荚": "🫛",
       "柠檬": "🍋", "苹果": "🍎", "牛油果": "🥑", "萝卜": "🥕", "甜椒": "🫑",
       "芒果": "🥭", "香蕉": "🍌", "胡萝卜": "🥕", "木瓜": "🍈", "火龙果": "🔥",
@@ -36,6 +36,17 @@ export function BabyGrowth() {
       "甜瓜": "🍈", "西瓜": "🍉",
     }
     return sizeMap[size] || "👶"
+  }
+
+  if (!currentWeek) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <div className="text-4xl mb-2">👶</div>
+          <p className="text-gray-500">请先在个人资料中设置预产期</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

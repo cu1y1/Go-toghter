@@ -21,7 +21,7 @@ const APP_VERSION = '1.0.0'
 const COPYRIGHT_YEAR = new Date().getFullYear()
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
-  if (!dueDate) return 20
+  if (!dueDate) return null
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
   const now = new Date()
   const diffTime = due.getTime() - now.getTime()

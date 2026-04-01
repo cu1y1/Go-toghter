@@ -11,7 +11,7 @@ import { useUserStore } from '@/store/user-store'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
-  if (!dueDate) return 20
+  if (!dueDate) return null
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
   const now = new Date()
   const diffTime = due.getTime() - now.getTime()
@@ -20,14 +20,26 @@ const calculateCurrentWeek = (dueDate: Date | string): number => {
 }
 
 export function HomeTab() {
-  const { user } = useUserStore()
-  const isLoading = !user
+  const { user, isLoggedIn } = useUserStore()
+  if (!isLoggedIn || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white">
+        <div className="text-center p-8">
+          <div className="text-6xl mb-4">👶</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">欢迎使用孕爸爸</h2>
+          <p className="text-gray-500">请先设置孕期信息</p>
+        </div>
+      </div>
+    )
+  }
+
+  const isLoading = false
   
   const userInfo = {
-    babyName: user?.babyName || '小宝贝',
-    currentWeek: user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek || 20),
-    points: user?.points || 180,
-    dueDate: user?.dueDate ? new Date(user.dueDate) : new Date(Date.now() + 140 * 24 * 60 * 60 * 1e3)
+    babyName: user?.babyName,
+    currentWeek: user?.dueDate ? calculateCurrentWeek(user.dueDate) : user?.pregnancyWeek,
+    points: user?.points,
+    dueDate: user?.dueDate ? new Date(user.dueDate) : null
   }
   
   const [mealStatus, setMealStatus] = useState(() => 

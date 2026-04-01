@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useUserStore } from '@/store/user-store'
 import { LevelCard } from './level-card'
 import { CalendarView } from './calendar-view'
 import { MonthlyStats } from './monthly-stats'
@@ -8,7 +9,7 @@ import { TodayDetail, CheckInRecord } from './today-detail'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { MEAL_TYPES, LEVEL_CONFIG } from '@/lib/constants'
 import { useTabStore } from '@/store/tab-store'
-import { getDaysInMonth, format, subDays, addDays } from 'date-fns'
+import { getDaysInMonth, format, subDays } from 'date-fns'
 
 // 打卡日期记录类型
 interface CalendarCheckInRecord {
@@ -22,72 +23,108 @@ interface UserInfo {
   points: number
 }
 
-// 食谱名称模拟数据
-const RECIPE_NAMES: Record<keyof typeof MEAL_TYPES, string[]> = {
-  breakfast: ['燕麦粥配水果', '全麦面包+鸡蛋', '小米粥+馒头', '豆浆油条'],
-  lunch: ['番茄炒蛋盖饭', '清蒸鱼+蔬菜', '红烧肉盖饭', '蔬菜沙拉'],
-  dinner: ['排骨汤+米饭', '清炒时蔬', '红烧牛肉面', '家常豆腐'],
-  snack_morning: ['酸奶+坚果', '水果拼盘', '牛奶饼干'],
-  snack_afternoon: ['红枣枸杞茶', '核桃仁', '水果沙拉'],
-  snack_evening: ['热牛奶', '小米粥', '燕麦片'],
-}
-
-// 随机选择食谱
-function getRandomRecipe(mealType: keyof typeof MEAL_TYPES): string {
-  const recipes = RECIPE_NAMES[mealType]
-  return recipes[Math.floor(Math.random() * recipes.length)]
-}
-
 export function CheckInTab() {
-  // 用户信息
-  const [userInfo, setUserInfo] = useState<UserInfo>({
-    level: 3,
-    points: 180
-  })
+  const { user, updatePoints, isLoggedIn } = useUserStore()
+  const setActiveTab = useTabStore((s) => s.setActiveTab)
+  
+  // 用户信息 - 从 store 获取，无默认值
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   
   // 当前选中的日期
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   
-  // 今日打卡记录
-  const [todayRecords, setTodayRecords] = useState<CheckInRecord[]>(() => 
-    (Object.keys(MEAL_TYPES) as Array<keyof typeof MEAL_TYPES>).map(mealType => ({
-      mealType,
-      recipeName: getRandomRecipe(mealType),
-      checkInTime: undefined,
-      completed: false,
-      points: 10
-    }))
-  )
+  // 今日打卡记录 - 从 API 获取
+  const [todayRecords, setTodayRecords] = useState<CheckInRecord[]>([])
   
-  // 模拟打卡历史数据（过去30天）
-  const checkedDates = useMemo<CalendarCheckInRecord[]>(() => {
-    const records: CalendarCheckInRecord[] = []
-    const today = new Date()
-    
-    // 生成过去30天的模拟打卡数据
-    for (let i = 0; i < 30; i++) {
-      const date = subDays(today, i)
-      // 随机决定是否打卡（周末概率低一点）
-      const dayOfWeek = date.getDay()
-      const checkInChance = dayOfWeek === 0 || dayOfWeek === 6 ? 0.5 : 0.8
+  // 打卡历史数据 - 从 API 获取
+  const [checkedDates, setCheckedDates] = useState<CalendarCheckInRecord[]>([])
+  
+  // 加载状态
+  const [loading, setLoading] = useState(true)
+  
+  // 未登录时显示提示
+  if (!isLoggedIn || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="text-6xl mb-4">👶</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">欢迎使用孕爸爸</h2>
+          <p className="text-gray-500 mb-4">请先设置您的孕期信息，开始健康打卡</p>
+          <button 
+            onClick={() => setActiveTab('onboarding')}
+            className="px-6 py-3 bg-orange-500 text-white rounded-full font-medium"
+          >
+            立即开始
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // 从后端获取打卡数据
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return
       
-      if (Math.random() < checkInChance) {
-        records.push({
-          date,
-          count: Math.floor(Math.random() * 4) + 1 // 1-4次打卡
+      try {
+        setLoading(true)
+        
+        // 获取用户信息
+        const userRes = await fetch('/api/user', {
+          headers: { 'x-user-id': user.id }
         })
+        const userData = await userRes.json()
+        if (userData.success) {
+          setUserInfo({ level: userData.data.level, points: userData.data.points })
+        }
+        
+        // 获取今日打卡
+        const todayRes = await fetch('/api/checkin/today', {
+          headers: { 'x-user-id': user.id }
+        })
+        const todayData = await todayRes.json()
+        if (todayData.success) {
+          // 转换为 UI 需要的格式
+          const records = (Object.keys(MEAL_TYPES) as Array<keyof typeof MEAL_TYPES>).map(mealType => {
+            const checkIn = todayData.data?.find((c: any) => c.mealType === mealType)
+            return {
+              mealType,
+              recipeName: checkIn?.recipe?.name || '',
+              checkInTime: checkIn ? format(new Date(checkIn.checkTime), 'HH:mm') : undefined,
+              completed: !!checkIn,
+              points: checkIn?.points || 10
+            }
+          })
+          setTodayRecords(records)
+        }
+        
+        // 获取本月数据
+        const monthRes = await fetch('/api/checkin/monthly', {
+          headers: { 'x-user-id': user.id }
+        })
+        const monthData = await monthRes.json()
+        if (monthData.success && monthData.data) {
+          const records = (monthData.data.checkIns || []).map((c: any) => ({
+            date: new Date(c.checkDate),
+            count: 1
+          }))
+          setCheckedDates(records)
+        }
+      } catch (err) {
+        console.error('获取打卡数据失败:', err)
+      } finally {
+        setLoading(false)
       }
     }
     
-    return records
-  }, [])
+    fetchData()
+  }, [user?.id])
   
-  // 本月统计
+  // 本月统计 - 从已加载数据计算
   const monthlyStats = useMemo(() => {
     const today = new Date()
     const daysInMonth = getDaysInMonth(today)
     
-    // 计算本月打卡天数
     const thisMonthRecords = checkedDates.filter(record => 
       record.date.getMonth() === today.getMonth() &&
       record.date.getFullYear() === today.getFullYear()
@@ -120,81 +157,82 @@ export function CheckInTab() {
   }, [checkedDates])
   
   // 处理打卡
-  const handleCheckIn = useCallback((mealType: keyof typeof MEAL_TYPES) => {
-    setTodayRecords(prev => 
-      prev.map(record => 
-        record.mealType === mealType 
-          ? { 
-              ...record, 
-              completed: true,
-              checkInTime: format(new Date(), 'HH:mm')
-            }
-          : record
-      )
-    )
+  const handleCheckIn = useCallback(async (mealType: keyof typeof MEAL_TYPES) => {
+    if (!user?.id) return
     
-    // 增加积分
-    setUserInfo(prev => {
-      const newPoints = prev.points + 10
-      // 检查是否升级
-      const newLevel = LEVEL_CONFIG.find(
-        l => newPoints >= l.minPoints && newPoints < l.maxPoints
-      )?.level || prev.level
+    try {
+      const res = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
+        body: JSON.stringify({ mealType })
+      })
+      const data = await res.json()
       
-      return {
-        points: newPoints,
-        level: newLevel
+      if (data.success) {
+        setTodayRecords(prev => 
+          prev.map(record => 
+            record.mealType === mealType 
+              ? { 
+                  ...record, 
+                  completed: true,
+                  checkInTime: format(new Date(), 'HH:mm')
+                } 
+              : record
+          )
+        )
+        
+        // 更新积分
+        const newPoints = (userInfo?.points || 0) + (data.data?.points || 10)
+        const newLevel = LEVEL_CONFIG.find(
+          l => newPoints >= l.minPoints && newPoints < l.maxPoints
+        )?.level || (userInfo?.level || 1)
+        
+        setUserInfo({ points: newPoints, level: newLevel })
+        updatePoints(newPoints)
+      } else {
+        alert(data.error || '打卡失败')
       }
-    })
-  }, [])
+    } catch (err) {
+      console.error('打卡失败:', err)
+      alert('网络错误，请稍后重试')
+    }
+  }, [user, userInfo, updatePoints])
   
   // 处理日期选择
   const handleDateSelect = useCallback((date: Date) => {
     setSelectedDate(date)
   }, [])
   
-  // 处理添加餐食
+  // 处理添加餐食 - 跳转食谱页
   const handleAddMeal = useCallback((mealType: keyof typeof MEAL_TYPES) => {
-    # 跳转到食谱页面
     setActiveTab('recipe')
+  }, [setActiveTab])
   
-  // 获取选中日期的打卡记录
+  // 获取选中日期的打卡记录（今日或历史）
   const selectedDateRecords = useMemo(() => {
     const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
     
     if (isToday) {
-      return todayRecords
-    }
-    
-    // 查找历史记录
-    const record = checkedDates.find(r => 
-      format(r.date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
-    )
-    
-    if (!record) {
-      return (Object.keys(MEAL_TYPES) as Array<keyof typeof MEAL_TYPES>).map(mealType => ({
+      return todayRecords.length > 0 ? todayRecords : (Object.keys(MEAL_TYPES) as Array<keyof typeof MEAL_TYPES>).map(mealType => ({
         mealType,
-        recipeName: getRandomRecipe(mealType),
+        recipeName: '',
         checkInTime: undefined,
         completed: false,
         points: 10
       }))
     }
     
-    // 模拟历史打卡记录
-    const mealTypes = Object.keys(MEAL_TYPES) as Array<keyof typeof MEAL_TYPES>
-    const completedMeals = mealTypes.slice(0, record.count)
-    
-    return mealTypes.map((mealType, index) => ({
-      mealType,
-      recipeName: getRandomRecipe(mealType),
-      checkInTime: completedMeals.includes(mealType) 
-        ? `${MEAL_TYPES[mealType].time.split('-')[0]}:${String(Math.floor(Math.random() * 30)).padStart(2, '0')}`
-        : undefined,
-      completed: completedMeals.includes(mealType),
-      points: 10
-    }))
-  }, [selectedDate, todayRecords, checkedDates])
+    // 历史日期 - 暂时显示空状态
+    return []
+  }, [selectedDate, todayRecords])
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-gray-500">加载中...</div>
+      </div>
+    )
+  }
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50">
@@ -211,10 +249,12 @@ export function CheckInTab() {
           </div>
           
           {/* 等级进度卡片 */}
-          <LevelCard 
-            level={userInfo.level}
-            points={userInfo.points}
-          />
+          {userInfo && (
+            <LevelCard 
+              level={userInfo.level}
+              points={userInfo.points}
+            />
+          )}
           
           {/* 月度统计 */}
           <MonthlyStats 
