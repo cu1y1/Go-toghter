@@ -117,7 +117,7 @@ export const ProfileScreen: React.FC = () => {
           <View style={styles.userTop}>
             <TouchableOpacity style={styles.avatarContainer}>
               {userInfo.avatar ? (
-                <Image source={{ uri: userInfo.avatar }} style={styles.avatar} />
+                <Image source={{ uri: userInfo.avatar }} style={styles.avatar} accessibilityLabel="用户头像" />
               ) : (
                 <View style={styles.avatarPlaceholder}>
                   <Ionicons name="person" size={32} color={COLORS.white} />

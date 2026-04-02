@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useBabyBagStore, CategoryType, CATEGORY_CONFIG } from '@/store/babybag-store'
+import { useBabyBagStore } from '@/store/babybag-store'
+import { BABY_BAG_CATEGORIES } from '@/lib/constants'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,13 +16,13 @@ import { Plus } from 'lucide-react'
 
 export function AddItemForm() {
   const [itemName, setItemName] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('other')
+  const [selectedCategory, setSelectedCategory] = useState('mom')
   const { addItem } = useBabyBagStore()
 
   const handleAddItem = () => {
     const trimmedName = itemName.trim()
     if (trimmedName) {
-      addItem(trimmedName, selectedCategory)
+      addItem('current-user-id', selectedCategory, trimmedName)
       setItemName('')
     }
   }
@@ -53,17 +54,17 @@ export function AddItemForm() {
         <div className="flex gap-2">
           <Select 
             value={selectedCategory} 
-            onValueChange={(value) => setSelectedCategory(value as CategoryType)}
+            onValueChange={setSelectedCategory}
           >
             <SelectTrigger className="flex-1 border-gray-200 focus:ring-orange-200">
               <SelectValue placeholder="选择分类" />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(CATEGORY_CONFIG).map(([key, config]) => (
-                <SelectItem key={key} value={key}>
+              {BABY_BAG_CATEGORIES.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
                   <div className="flex items-center gap-2">
-                    <span>{config.emoji}</span>
-                    <span>{config.label}</span>
+                    <span>{category.icon}</span>
+                    <span>{category.name}</span>
                   </div>
                 </SelectItem>
               ))}
@@ -87,7 +88,7 @@ export function AddItemForm() {
             <button
               key={item}
               onClick={() => {
-                addItem(item, 'mom')
+                addItem('current-user-id', 'mom', item)
               }}
               className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full hover:bg-orange-100 hover:text-orange-600 transition-colors"
             >
@@ -98,7 +99,7 @@ export function AddItemForm() {
             <button
               key={item}
               onClick={() => {
-                addItem(item, 'baby')
+                addItem('current-user-id', 'baby', item)
               }}
               className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full hover:bg-orange-100 hover:text-orange-600 transition-colors"
             >

@@ -1,318 +1,250 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { 
-  hospitalBagItems, 
-  getSeasonByDate, 
-  getCurrentSeason,
-  type Season,
-  type DeliveryMethod,
-  type ItemPriority,
-  type BagItemData,
-  CATEGORY_LABELS
-} from '@/lib/hospital-bag-data'
+import { BabyBagService } from '@/services/babybag-service'
+import type { BabyBagCategory, BabyBagItem, BabyBagStats } from '@/services/babybag-service'
 
-// ============================================
-// 类型定义
-// ============================================
-
-// 物品分类（兼容旧版 + 新增 dad）
-export type CategoryType = 'documents' | 'mom' | 'baby' | 'dad' | 'other'
-
-// 扩展分类配置（兼容旧版 + 新增 dad）
-export const CATEGORY_CONFIG: Record<CategoryType, { label: string; icon: string; emoji: string }> = {
-  documents: { label: '证件类', icon: 'file-text', emoji: '📄' },
-  mom: { label: '妈妈用品', icon: 'user', emoji: '👩' },
-  baby: { label: '宝宝用品', icon: 'baby', emoji: '👶' },
-  dad: { label: '爸爸陪护', icon: 'user-check', emoji: '👨' },
-  other: { label: '其他用品', icon: 'package', emoji: '🎒' },
-}
-
-// 物品接口（扩展版）
-export interface BagItem {
-  id: string
-  name: string
-  category: CategoryType
-  checked: boolean
-  isCustom: boolean
-  priority?: ItemPriority        // 优先级：essential/recommended/optional
-  note?: string                  // 说明
-  tags?: {                       // 标签
-    seasons?: Season[]
-    delivery?: DeliveryMethod[]
-  }
-  quantity?: number
-}
-
-// ============================================
-// 数据转换：将增强数据转换为 Store 格式
-// ============================================
-
-function convertToBagItem(item: BagItemData): BagItem {
+// 计算统计数据
+function calculateStats(items: BabyBagItem[]): BabyBagStats {
+  const total = items.length
+  const prepared = items.filter(item => item.isPrepared).length
   return {
-    id: item.id,
-    name: item.name,
-    category: item.category,
-    checked: false,
-    isCustom: false,
-    priority: item.priority,
-    note: item.note,
-    tags: item.tags as BagItem['tags'],
-    quantity: item.quantity,
+    total,
+    prepared,
+    progress: total > 0 ? Math.round((prepared / total) * 100) : 0
   }
 }
 
-// 获取增强版默认物品列表
-function getEnhancedDefaultItems(): BagItem[] {
-  return hospitalBagItems.map(convertToBagItem)
-}
-
-// ============================================
-// 用户画像接口
-// ============================================
-
-export interface UserProfile {
-  dueDate?: string
-  deliveryMethod?: DeliveryMethod
-  hospitalDays?: number
-}
-
-// ============================================
-// Store 状态接口
-// ============================================
-
+// 待产包状态接口
 interface BabyBagState {
-  items: BagItem[]
-  userProfile: UserProfile
-  showOnlyRecommended: boolean   // 只显示推荐物品
-  selectedSeason: Season | null  // 选中的季节（用于预览）
+  // 状态数据
+  categories: BabyBagCategory[]
+  items: BabyBagItem[]
+  stats: BabyBagStats
+  loading: boolean
+  error: string | null
+  expandedCategories: string[]
   
   // 操作方法
-  toggleItem: (id: string) => void
-  addItem: (name: string, category: CategoryType) => void
-  removeItem: (id: string) => void
-  checkItem: (id: string, checked: boolean) => void
-  resetItems: () => void
-  checkAllByCategory: (category: CategoryType) => void
-  
-  // 用户画像
-  setUserProfile: (profile: Partial<UserProfile>) => void
-  setSelectedSeason: (season: Season | null) => void
-  setShowOnlyRecommended: (show: boolean) => void
-  
-  // 智能推荐
-  getFilteredItems: () => BagItem[]
-  getRecommendedItems: () => BagItem[]
-  getSmartRecommendations: () => { essential: BagItem[], recommended: BagItem[], optional: BagItem[] }
+  getBabyBagItems: (userId: string) => Promise<boolean>
+  addItem: (userId: string, categoryId: string, name: string, description?: string) => Promise<boolean>
+  updateItem: (userId: string, itemId: string, data: { isPrepared?: boolean; name?: string; description?: string }) => Promise<boolean>
+  deleteItem: (userId: string, itemId: string) => Promise<boolean>
+  toggleItem: (userId: string, itemId: string) => Promise<boolean>
+  toggleCategory: (categoryId: string) => void
+  resetError: () => void
+  resetState: () => void
   
   // 计算属性
-  getProgress: () => { checked: number; total: number; percentage: number }
-  getItemsByCategory: (category: CategoryType) => BagItem[]
-  getCategoryProgress: (category: CategoryType) => { checked: number; total: number }
-  getSeasonInfo: () => { current: Season; dueDateSeason: Season | null; daysUntil: number | null }
+  getItemsByCategory: (categoryId: string) => BabyBagItem[]
+  getCategoryProgress: (categoryId: string) => { prepared: number; total: number }
+  getTotalProgress: () => { prepared: number; total: number; progress: number }
 }
 
-// 生成唯一ID
-const generateId = () => `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
-// 智能筛选物品
-function filterItems(
-  items: BagItem[], 
-  options: {
-    season?: Season | null
-    delivery?: DeliveryMethod
-    priority?: ItemPriority
-  }
-): BagItem[] {
-  return items.filter(item => {
-    // 优先级筛选
-    if (options.priority && item.priority && item.priority !== options.priority) {
-      return false
-    }
-    
-    // 季节筛选 - 只筛选季节特定物品，通用物品始终显示
-    if (options.season && item.tags?.seasons?.length) {
-      if (!item.tags.seasons.includes(options.season)) {
-        // 排除不匹配季节的物品
-        return false
-      }
-    }
-    
-    // 分娩方式筛选
-    if (options.delivery && item.tags?.delivery?.length) {
-      if (!item.tags.delivery.includes(options.delivery) && !item.tags.delivery.includes('undecided')) {
-        return false
-      }
-    }
-    
-    return true
-  })
-}
-
-// ============================================
-// Store 实现
-// ============================================
-
+// 待产包状态Store
 export const useBabyBagStore = create<BabyBagState>()(
   persist(
     (set, get) => ({
-      items: getEnhancedDefaultItems(),
-      userProfile: {},
-      showOnlyRecommended: false,
-      selectedSeason: null,
+      // 初始状态
+      categories: [],
+      items: [],
+      stats: {
+        total: 0,
+        prepared: 0,
+        progress: 0
+      },
+      loading: false,
+      error: null,
+      expandedCategories: ['documents', 'mom', 'baby', 'other'],
       
-      // 切换物品勾选状态
-      toggleItem: (id) => set((state) => ({
-        items: state.items.map((item) =>
-          item.id === id ? { ...item, checked: !item.checked } : item
-        ),
-      })),
-      
-      // 勾选/取消勾选指定物品
-      checkItem: (id, checked) => set((state) => ({
-        items: state.items.map((item) =>
-          item.id === id ? { ...item, checked } : item
-        ),
-      })),
-      
-      // 添加自定义物品
-      addItem: (name, category) => set((state) => ({
-        items: [
-          ...state.items,
-          {
-            id: generateId(),
-            name,
-            category,
-            checked: false,
-            isCustom: true,
-            priority: 'optional',
-          },
-        ],
-      })),
-      
-      // 删除物品（仅自定义物品）
-      removeItem: (id) => set((state) => ({
-        items: state.items.filter((item) => item.id !== id),
-      })),
-      
-      // 重置所有物品状态
-      resetItems: () => set((state) => ({
-        items: state.items.map((item) => ({ ...item, checked: false })),
-      })),
-      
-      // 全选某分类
-      checkAllByCategory: (category) => set((state) => ({
-        items: state.items.map((item) =>
-          item.category === category ? { ...item, checked: true } : item
-        ),
-      })),
-      
-      // 设置用户画像
-      setUserProfile: (profile) => set((state) => ({
-        userProfile: { ...state.userProfile, ...profile },
-      })),
-      
-      // 设置选中的季节（用于预览）
-      setSelectedSeason: (season) => set({ selectedSeason: season }),
-      
-      // 设置是否只显示推荐
-      setShowOnlyRecommended: (show) => set({ showOnlyRecommended: show }),
-      
-      // 获取筛选后的物品列表
-      getFilteredItems: () => {
-        const state = get()
-        const { season, delivery } = getSeasonFromProfile(state.userProfile)
+      // 获取待产包物品
+      getBabyBagItems: async (userId: string) => {
+        set({ loading: true, error: null })
         
-        return filterItems(state.items, {
-          season: state.selectedSeason || season,
-          delivery: state.userProfile.deliveryMethod || delivery,
+        try {
+          const response = await BabyBagService.getBabyBagItems(userId)
+          
+          if (response.success && response.data) {
+            const { categories, stats } = response.data
+            const items = categories.flatMap(category => category.items)
+            
+            set({
+              categories,
+              items,
+              stats,
+              loading: false
+            })
+            return true
+          } else {
+            set({ error: response.error || '获取待产包物品失败', loading: false })
+            return false
+          }
+        } catch (error) {
+          console.error('获取待产包物品失败:', error)
+          set({ error: '网络错误，请稍后重试', loading: false })
+          return false
+        }
+      },
+      
+      // 添加物品 - 优化：使用局部更新而非重新获取整个列表
+      addItem: async (userId: string, categoryId: string, name: string, description?: string) => {
+        set({ loading: true, error: null })
+        
+        try {
+          const response = await BabyBagService.addItem(userId, { categoryId, name, description })
+          
+          if (response.success && response.data) {
+            // 局部更新：直接添加到本地状态，而不重新获取整个列表
+            const newItem = response.data
+            set((state) => {
+              const newItems = [...state.items, newItem]
+              return {
+                items: newItems,
+                stats: calculateStats(newItems),
+                loading: false
+              }
+            })
+            return true
+          } else {
+            set({ error: response.error || '添加物品失败', loading: false })
+            return false
+          }
+        } catch (error) {
+          console.error('添加物品失败:', error)
+          set({ error: '网络错误，请稍后重试', loading: false })
+          return false
+        }
+      },
+      
+      // 更新物品 - 优化：使用局部更新而非重新获取整个列表
+      updateItem: async (userId: string, itemId: string, data: { isPrepared?: boolean; name?: string; description?: string }) => {
+        set({ loading: true, error: null })
+        
+        try {
+          const response = await BabyBagService.updateItem(userId, itemId, data)
+          
+          if (response.success && response.data) {
+            // 局部更新：直接更新本地状态，而不重新获取整个列表
+            const updatedItem = response.data
+            set((state) => {
+              const newItems = state.items.map(item => 
+                item.id === itemId ? { ...item, ...updatedItem } : item
+              )
+              return {
+                items: newItems,
+                stats: calculateStats(newItems),
+                loading: false
+              }
+            })
+            return true
+          } else {
+            set({ error: response.error || '更新物品失败', loading: false })
+            return false
+          }
+        } catch (error) {
+          console.error('更新物品失败:', error)
+          set({ error: '网络错误，请稍后重试', loading: false })
+          return false
+        }
+      },
+      
+      // 删除物品 - 优化：使用局部更新而非重新获取整个列表
+      deleteItem: async (userId: string, itemId: string) => {
+        set({ loading: true, error: null })
+        
+        try {
+          const response = await BabyBagService.deleteItem(userId, itemId)
+          
+          if (response.success) {
+            // 局部更新：直接从本地状态删除，而不重新获取整个列表
+            set((state) => {
+              const newItems = state.items.filter(item => item.id !== itemId)
+              return {
+                items: newItems,
+                stats: calculateStats(newItems),
+                loading: false
+              }
+            })
+            return true
+          } else {
+            set({ error: response.error || '删除物品失败', loading: false })
+            return false
+          }
+        } catch (error) {
+          console.error('删除物品失败:', error)
+          set({ error: '网络错误，请稍后重试', loading: false })
+          return false
+        }
+      },
+      
+      // 切换物品状态
+      toggleItem: async (userId: string, itemId: string) => {
+        const item = get().items.find(i => i.id === itemId)
+        if (!item) {
+          set({ error: '物品不存在' })
+          return false
+        }
+        
+        return get().updateItem(userId, itemId, { isPrepared: !item.isPrepared })
+      },
+      
+      // 切换分类展开状态
+      toggleCategory: (categoryId: string) => {
+        set((state) => ({
+          expandedCategories: state.expandedCategories.includes(categoryId)
+            ? state.expandedCategories.filter(id => id !== categoryId)
+            : [...state.expandedCategories, categoryId]
+        }))
+      },
+      
+      // 重置错误
+      resetError: () => {
+        set({ error: null })
+      },
+      
+      // 重置状态
+      resetState: () => {
+        set({
+          categories: [],
+          items: [],
+          stats: {
+            total: 0,
+            prepared: 0,
+            progress: 0
+          },
+          loading: false,
+          error: null,
+          expandedCategories: ['documents', 'mom', 'baby', 'other'],
         })
       },
       
-      // 获取推荐物品列表
-      getRecommendedItems: () => {
-        const state = get()
-        const filtered = state.getFilteredItems()
-        return filtered.filter(item => item.priority === 'essential' || item.priority === 'recommended')
-      },
-      
-      // 获取智能推荐分组
-      getSmartRecommendations: () => {
-        const filtered = get().getFilteredItems()
-        return {
-          essential: filtered.filter(item => item.priority === 'essential'),
-          recommended: filtered.filter(item => item.priority === 'recommended'),
-          optional: filtered.filter(item => item.priority === 'optional'),
-        }
-      },
-      
-      // 计算进度
-      getProgress: () => {
-        const { items } = get()
-        // 只计算筛选后的物品
-        const filtered = get().getFilteredItems()
-        const total = filtered.length
-        const checked = filtered.filter((item) => item.checked).length
-        const percentage = total > 0 ? Math.round((checked / total) * 100) : 0
-        return { checked, total, percentage }
-      },
-      
       // 按分类获取物品
-      getItemsByCategory: (category) => {
-        const filtered = get().getFilteredItems()
-        return filtered.filter((item) => item.category === category)
+      getItemsByCategory: (categoryId: string) => {
+        return get().items.filter(item => item.categoryId === categoryId)
       },
       
-      // 分类进度
-      getCategoryProgress: (category) => {
-        const items = get().getItemsByCategory(category)
+      // 获取分类进度
+      getCategoryProgress: (categoryId: string) => {
+        const items = get().getItemsByCategory(categoryId)
         const total = items.length
-        const checked = items.filter((item) => item.checked).length
-        return { checked, total }
+        const prepared = items.filter(item => item.isPrepared).length
+        return { prepared, total }
       },
       
-      // 获取季节信息
-      getSeasonInfo: () => {
-        const current = getCurrentSeason()
-        const { dueDate, deliveryMethod } = get().userProfile
-        
-        let dueDateSeason: Season | null = null
-        let daysUntil: number | null = null
-        
-        if (dueDate) {
-          const due = new Date(dueDate)
-          dueDateSeason = getSeasonByDate(due)
-          daysUntil = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      // 获取总进度
+      getTotalProgress: () => {
+        const { stats } = get()
+        return {
+          prepared: stats.prepared,
+          total: stats.total,
+          progress: stats.progress
         }
-        
-        return { current, dueDateSeason, daysUntil }
       },
     }),
     {
       name: 'pregdad-babybag-storage',
       partialize: (state) => ({
-        items: state.items,
-        userProfile: state.userProfile,
+        expandedCategories: state.expandedCategories,
       }),
     }
   )
 )
-
-// 从用户画像获取季节和默认分娩方式
-function getSeasonFromProfile(profile: UserProfile): { 
-  season: Season | null
-  delivery: DeliveryMethod | undefined 
-} {
-  if (profile.dueDate) {
-    return {
-      season: getSeasonByDate(new Date(profile.dueDate)),
-      delivery: profile.deliveryMethod,
-    }
-  }
-  return {
-    season: getCurrentSeason(),
-    delivery: profile.deliveryMethod,
-  }
-}
-
-// 导出标签配置（供UI使用）
-export { CATEGORY_LABELS }

@@ -5,8 +5,8 @@ import { Progress } from '@/components/ui/progress'
 import { Package, CheckCircle2 } from 'lucide-react'
 
 export function ProgressHeader() {
-  const { getProgress } = useBabyBagStore()
-  const { checked, total, percentage } = getProgress()
+  const { getTotalProgress } = useBabyBagStore()
+  const { prepared, total, progress } = getTotalProgress()
 
   return (
     <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5 shadow-sm border border-orange-100">
@@ -29,7 +29,7 @@ export function ProgressHeader() {
             <span className="text-sm font-medium text-gray-700">准备进度</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-2xl font-bold text-orange-500">{checked}</span>
+            <span className="text-2xl font-bold text-orange-500">{prepared}</span>
             <span className="text-sm text-gray-400">/</span>
             <span className="text-sm text-gray-500">{total}</span>
           </div>
@@ -38,15 +38,15 @@ export function ProgressHeader() {
         {/* 进度条 */}
         <div className="relative">
           <Progress 
-            value={percentage} 
+            value={progress} 
             className="h-3 bg-orange-100 rounded-full overflow-hidden"
           />
           <div 
             className="absolute inset-0 bg-gradient-to-r from-orange-400 to-amber-400 rounded-full transition-all duration-500 ease-out"
             style={{ 
-              width: `${percentage}%`,
+              width: `${progress}%`,
               backgroundSize: '200% 100%',
-              animation: percentage > 0 ? 'shimmer 2s infinite' : 'none'
+              animation: progress > 0 ? 'shimmer 2s infinite' : 'none'
             }}
           />
         </div>
@@ -54,9 +54,9 @@ export function ProgressHeader() {
         {/* 百分比显示 */}
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-gray-400">
-            {percentage === 100 ? '🎉 已全部准备完成！' : '继续加油准备吧~'}
+            {progress === 100 ? '🎉 已全部准备完成！' : '继续加油准备吧~'}
           </span>
-          <span className="text-sm font-semibold text-orange-500">{percentage}%</span>
+          <span className="text-sm font-semibold text-orange-500">{progress}%</span>
         </div>
       </div>
 

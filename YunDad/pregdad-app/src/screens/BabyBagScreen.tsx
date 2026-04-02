@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -10,25 +10,44 @@ import {
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS, BABY_BAG_CATEGORIES, DEFAULT_BABY_BAG_ITEMS } from '../constants'
+import { COLORS, BABY_BAG_CATEGORIES } from '../constants'
 import { Card, ProgressBar } from '../components/common'
-import { useBabyBagStore } from '../store'
-import { BabyBagItem } from '../types'
+import { useBabyBagStore } from '../../../src/store/babybag-store'
+import { useUserStore } from '../../../src/store/user-store'
 
 export const BabyBagScreen: React.FC = () => {
-  const { items, toggleItem, addItem, removeItem, getProgress } = useBabyBagStore()
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('documents')
+  const { 
+    categories, 
+    items, 
+    stats, 
+    loading, 
+    error, 
+    expandedCategories, 
+    getBabyBagItems, 
+    addItem, 
+    deleteItem, 
+    toggleItem, 
+    toggleCategory, 
+    getItemsByCategory, 
+    getCategoryProgress, 
+    getTotalProgress 
+  } = useBabyBagStore()
+  
+  const { user, isLoggedIn } = useUserStore()
+  
   const [showAddForm, setShowAddForm] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [newItemCategory, setNewItemCategory] = useState('mom')
 
-  const progress = getProgress()
-  const progressPercent = progress.total > 0 ? (progress.prepared / progress.total * 100) : 0
+  const progress = getTotalProgress()
+  const progressPercent = progress.total > 0 ? progress.progress : 0
 
-  // 切换分类展开
-  const toggleCategory = useCallback((categoryId: string) => {
-    setExpandedCategory(prev => prev === categoryId ? null : categoryId)
-  }, [])
+  // 获取待产包物品数据
+  useEffect(() => {
+    if (isLoggedIn && user?.id) {
+      getBabyBagItems(user.id)
+    }
+  }, [getBabyBagItems, isLoggedIn, user?.id])
 
   // 添加自定义物品
   const handleAddItem = useCallback(() => {
@@ -37,56 +56,50 @@ export const BabyBagScreen: React.FC = () => {
       return
     }
 
-    const newItem: BabyBagItem = {
-      id: `custom-${Date.now()}`,
-      categoryId: newItemCategory,
-      name: newItemName.trim(),
-      isDefault: false,
-      isPrepared: false,
-      isCustom: true,
-      sortOrder: 999,
+    if (!isLoggedIn || !user?.id) {
+      Alert.alert('提示', '请先登录')
+      return
     }
 
-    addItem(newItem)
-    setNewItemName('')
-    setShowAddForm(false)
-    Alert.alert('成功', '物品已添加')
-  }, [newItemName, newItemCategory, addItem])
+    addItem(user.id, newItemCategory, newItemName.trim())
+      .then((success) => {
+        if (success) {
+          setNewItemName('')
+          setShowAddForm(false)
+          Alert.alert('成功', '物品已添加')
+        } else {
+          Alert.alert('失败', '添加物品失败，请稍后重试')
+        }
+      })
+  }, [newItemName, newItemCategory, addItem, isLoggedIn, user?.id])
 
   // 删除物品
-  const handleRemoveItem = useCallback((item: BabyBagItem) => {
+  const handleRemoveItem = useCallback((itemId: string) => {
+    if (!isLoggedIn || !user?.id) {
+      Alert.alert('提示', '请先登录')
+      return
+    }
+
     Alert.alert(
       '确认删除',
-      `确定要删除"${item.name}"吗？`,
+      '确定要删除这个物品吗？',
       [
         { text: '取消', style: 'cancel' },
         { 
           text: '删除', 
           style: 'destructive',
-          onPress: () => removeItem(item.id)
+          onPress: () => {
+            deleteItem(user.id, itemId)
+              .then((success) => {
+                if (!success) {
+                  Alert.alert('失败', '删除物品失败，请稍后重试')
+                }
+              })
+          }
         }
       ]
     )
-  }, [removeItem])
-
-  // 获取分类图标
-  const getCategoryIcon = (categoryId: string) => {
-    const cat = BABY_BAG_CATEGORIES.find(c => c.id === categoryId)
-    return cat?.icon || '📦'
-  }
-
-  // 获取分类名称
-  const getCategoryName = (categoryId: string) => {
-    const cat = BABY_BAG_CATEGORIES.find(c => c.id === categoryId)
-    return cat?.name || '其他'
-  }
-
-  // 获取分类进度
-  const getCategoryProgress = (categoryId: string) => {
-    const categoryItems = items.filter(i => i.categoryId === categoryId)
-    const prepared = categoryItems.filter(i => i.isPrepared).length
-    return { prepared, total: categoryItems.length }
-  }
+  }, [deleteItem, isLoggedIn, user?.id])
 
   return (
     <View style={styles.container}>
@@ -120,6 +133,26 @@ export const BabyBagScreen: React.FC = () => {
             }
           </Text>
         </Card>
+
+        {/* 加载状态 */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>加载中...</Text>
+          </View>
+        )}
+
+        {/* 错误提示 */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => getBabyBagItems(userId)}
+            >
+              <Text style={styles.retryButtonText}>重试</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* 添加物品按钮 */}
         <TouchableOpacity 
@@ -183,10 +216,12 @@ export const BabyBagScreen: React.FC = () => {
 
         {/* 分类列表 */}
         {BABY_BAG_CATEGORIES.map(category => {
-          const categoryItems = items.filter(i => i.categoryId === category.id)
+          const categoryItems = getItemsByCategory(category.id)
           const catProgress = getCategoryProgress(category.id)
-          const isExpanded = expandedCategory === category.id
+          const isExpanded = expandedCategories.includes(category.id)
           const isComplete = catProgress.prepared === catProgress.total && catProgress.total > 0
+
+          if (categoryItems.length === 0) return null
 
           return (
             <View key={category.id} style={styles.categorySection}>
@@ -229,7 +264,11 @@ export const BabyBagScreen: React.FC = () => {
                         styles.itemRow,
                         item.isPrepared && styles.itemRowPrepared
                       ]}
-                      onPress={() => toggleItem(item.id)}
+                      onPress={() => {
+                        if (isLoggedIn && user?.id) {
+                          toggleItem(user.id, item.id)
+                        }
+                      }}
                       activeOpacity={0.8}
                     >
                       <View style={styles.checkboxContainer}>
@@ -245,9 +284,9 @@ export const BabyBagScreen: React.FC = () => {
                       ]}>
                         {item.name}
                       </Text>
-                      {item.isCustom && (
+                      {!item.isDefault && (
                         <TouchableOpacity
-                          onPress={() => handleRemoveItem(item)}
+                          onPress={() => handleRemoveItem(item.id)}
                           style={styles.deleteButton}
                         >
                           <Ionicons name="trash-outline" size={16} color={COLORS.error} />
@@ -520,6 +559,43 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 4,
+  },
+  loadingContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: COLORS.textLight,
+  },
+  errorContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: COLORS.error + '10',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: COLORS.error,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    color: COLORS.white,
+    fontWeight: '500',
   },
   knowledgeCard: {
     marginHorizontal: 16,

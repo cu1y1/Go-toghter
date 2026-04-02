@@ -15,11 +15,20 @@ export function RecipeRecommender({ pregnancyWeek }: { pregnancyWeek: number }) 
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
-    fetch(`/api/recipes?isRecommended=true`).then(res => res.json()).then(data => {
-      if (data.success) setRecipes(data.data)
-      else setError(data.error)
-    }).catch(e => setError(e.message)).finally(() => setLoading(false))
+    const fetchRecipes = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/recipes?isRecommended=true`)
+        const data = await res.json()
+        if (data.success) setRecipes(data.data)
+        else setError(data.error)
+      } catch (e) {
+        setError((e as Error).message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchRecipes()
   }, [pregnancyWeek])
 
   const getTrimester = (w: number) => w <= 12 ? '孕早期' : w <= 28 ? '孕中期' : '孕晚期'

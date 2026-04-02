@@ -31,7 +31,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   
   const { setUser } = useUserStore()
   const scrollViewRef = useRef<ScrollView>(null)
-  const fadeAnim = useRef(new Animated.Value(1)).current
+  const fadeAnim = new Animated.Value(1)
 
   // 步骤配置
   const steps = [
@@ -61,7 +61,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       setCurrentStep(prev => prev + 1)
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
-  }, [currentStep, steps.length, fadeAnim])
+  }, [currentStep, steps.length])
 
   // 上一步
   const prevStep = useCallback(() => {

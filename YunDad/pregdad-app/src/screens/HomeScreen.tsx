@@ -208,6 +208,7 @@ export const HomeScreen: React.FC = () => {
                 <Image
                   source={{ uri: `https://images.unsplash.com/photo-${1517673400267 + i}-0251440c45dc?w=200` }}
                   style={styles.recipeImage}
+                  accessibilityLabel={`营养食谱 ${i} 的图片`}
                 />
                 <View style={styles.recipeInfo}>
                   <Text style={styles.recipeName} numberOfLines={1}>

@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useUserStore } from '@/store/user-store'
+import { useBabyBagStore } from '@/store/babybag-store'
 import { ProgressHeader } from './progress-header'
 import { CategoryList } from './category-section'
 import { AddItemForm } from './add-item-form'
@@ -8,6 +11,16 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Package } from 'lucide-react'
 
 export function BabyBagTab() {
+  const { user, isLoggedIn } = useUserStore()
+  const { getBabyBagItems } = useBabyBagStore()
+
+  // 获取待产包物品数据
+  useEffect(() => {
+    if (isLoggedIn && user?.id) {
+      getBabyBagItems(user.id)
+    }
+  }, [isLoggedIn, user?.id, getBabyBagItems])
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50/50 to-white">
       {/* 头部标题 */}

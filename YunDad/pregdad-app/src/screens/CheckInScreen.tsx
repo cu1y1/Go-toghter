@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, MEAL_TYPES, LEVEL_CONFIG } from '../constants'
 import { Card, ProgressBar } from '../components/common'
 import { useUserStore } from '../store'
+import { useCheckInStore, MealType } from '../../src/store/checkin-store'
 import { getLevelByPoints } from '../utils'
 
 const { width } = Dimensions.get('window')
@@ -26,36 +28,45 @@ const LEVEL_ICONS: Record<number, { icon: string; gradient: string[] }> = {
   6: { icon: '💎', gradient: ['#9B59B6', '#8E44AD'] },
 }
 
-// 生成模拟打卡数据
-const generateMockCheckIns = () => {
-  const checkIns: { date: Date; count: number }[] = []
-  const today = new Date()
-  
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    const dayOfWeek = date.getDay()
-    const checkInChance = dayOfWeek === 0 || dayOfWeek === 6 ? 0.5 : 0.8
-    
-    if (Math.random() < checkInChance) {
-      checkIns.push({
-        date,
-        count: Math.floor(Math.random() * 4) + 1
-      })
-    }
-  }
-  
-  return checkIns
-}
+
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
 export const CheckInScreen: React.FC = () => {
-  const { user } = useUserStore()
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [todayCheckIns, setTodayCheckIns] = useState<Record<string, boolean>>({})
+  const { user, updatePoints, isLoggedIn } = useUserStore()
+  
+  // 使用共享的打卡状态管理
+  const {
+    todayCheckins,
+    monthlyStats: storeMonthlyStats,
+    loading,
+    error,
+    selectedDate: storeSelectedDate,
+    selectedMonth,
+    selectedYear,
+    checkIn,
+    getTodayCheckins,
+    getMonthlyStats,
+    setSelectedDate,
+    setSelectedMonth,
+    setSelectedYear
+  } = useCheckInStore()
+  
+  // 从后端获取打卡数据
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id || !isLoggedIn) return
+      
+      // 获取今日打卡记录
+      await getTodayCheckins(user.id)
+      
+      // 获取本月统计
+      await getMonthlyStats(user.id)
+    }
+    
+    fetchData()
+  }, [user?.id, isLoggedIn, getTodayCheckins, getMonthlyStats])
   
   // 用户数据
   const userInfo = {
@@ -66,57 +77,54 @@ export const CheckInScreen: React.FC = () => {
   const levelInfo = getLevelByPoints(userInfo.points)
   const levelIconConfig = LEVEL_ICONS[levelInfo.level] || LEVEL_ICONS[1]
   
-  // 模拟打卡历史
-  const checkInHistory = useMemo(() => generateMockCheckIns(), [])
-  
-  // 本月统计
+  // 转换月度统计数据
   const monthlyStats = useMemo(() => {
-    const today = new Date()
-    const thisMonthRecords = checkInHistory.filter(record => 
-      record.date.getMonth() === today.getMonth() &&
-      record.date.getFullYear() === today.getFullYear()
-    )
-    
-    // 计算连续打卡
-    let streak = 0
-    const sortedDates = [...checkInHistory]
-      .filter(r => r.date <= today)
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
-    
-    for (let i = 0; i < sortedDates.length; i++) {
-      const expectedDate = new Date(today)
-      expectedDate.setDate(expectedDate.getDate() - i)
-      
-      const hasRecord = sortedDates.some(r => 
-        r.date.toDateString() === expectedDate.toDateString()
-      )
-      
-      if (hasRecord) {
-        streak++
-      } else {
-        break
+    if (!storeMonthlyStats) {
+      return {
+        checkedDays: 0,
+        totalCheckIns: 0,
+        streak: 0,
+        daysInMonth: new Date().getDate()
       }
     }
     
     return {
-      checkedDays: thisMonthRecords.length,
-      totalCheckIns: thisMonthRecords.reduce((sum, r) => sum + r.count, 0),
-      streak,
-      daysInMonth: new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate(),
+      checkedDays: storeMonthlyStats.summary.totalDays,
+      totalCheckIns: storeMonthlyStats.summary.totalCheckIns,
+      streak: storeMonthlyStats.summary.consecutiveDays,
+      daysInMonth: new Date(storeMonthlyStats.year, storeMonthlyStats.month, 0).getDate(),
     }
-  }, [checkInHistory])
+  }, [storeMonthlyStats])
+  
+  // 转换打卡日期数据
+  const checkInHistory = useMemo(() => {
+    if (!storeMonthlyStats) return []
+    
+    return Object.keys(storeMonthlyStats.dailyStats).map(dateStr => ({
+      date: new Date(dateStr),
+      count: storeMonthlyStats.dailyStats[dateStr].count
+    }))
+  }, [storeMonthlyStats])
   
   // 打卡处理
-  const handleCheckIn = useCallback((mealType: string) => {
-    if (!todayCheckIns[mealType]) {
-      setTodayCheckIns(prev => ({ ...prev, [mealType]: true }))
+  const handleCheckIn = useCallback(async (mealType: string) => {
+    if (!user?.id) return
+    
+    const success = await checkIn(user.id, mealType as MealType)
+    
+    if (success && todayCheckins) {
+      // 更新用户积分
+      const totalPoints = todayCheckins.checkIns.reduce((sum, c) => sum + c.points, 0)
+      updatePoints(totalPoints)
+    } else if (error) {
+      Alert.alert('打卡失败', error || '请稍后重试')
     }
-  }, [todayCheckIns])
+  }, [user, checkIn, todayCheckins, error, updatePoints])
   
   // 获取日历数据
   const getCalendarData = useMemo(() => {
-    const year = currentMonth.getFullYear()
-    const month = currentMonth.getMonth()
+    const year = selectedYear
+    const month = selectedMonth - 1 // 转换为 0-based 月份
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
     const daysInMonth = lastDay.getDate()
@@ -156,13 +164,23 @@ export const CheckInScreen: React.FC = () => {
     }
     
     return days
-  }, [currentMonth, checkInHistory])
+  }, [selectedYear, selectedMonth, checkInHistory])
   
   // 切换月份
   const changeMonth = (delta: number) => {
-    const newMonth = new Date(currentMonth)
-    newMonth.setMonth(newMonth.getMonth() + delta)
-    setCurrentMonth(newMonth)
+    let newMonth = selectedMonth + delta
+    let newYear = selectedYear
+    
+    if (newMonth > 12) {
+      newMonth = 1
+      newYear += 1
+    } else if (newMonth < 1) {
+      newMonth = 12
+      newYear -= 1
+    }
+    
+    setSelectedMonth(newMonth)
+    setSelectedYear(newYear)
   }
   
   // 判断是否今天
@@ -173,7 +191,13 @@ export const CheckInScreen: React.FC = () => {
   
   // 判断是否选中
   const isSelected = (date: Date) => {
-    return date.toDateString() === selectedDate.toDateString()
+    return date.toDateString() === new Date(storeSelectedDate).toDateString()
+  }
+  
+  // 检查餐食是否已打卡
+  const isMealCompleted = (mealType: string) => {
+    if (!todayCheckins) return false
+    return todayCheckins.checkIns.some(c => c.mealType === mealType)
   }
   
   const mealOrder = ['breakfast', 'snack_morning', 'lunch', 'snack_afternoon', 'dinner', 'snack_evening']
@@ -245,7 +269,7 @@ export const CheckInScreen: React.FC = () => {
               <Ionicons name="chevron-back" size={24} color={COLORS.text} />
             </TouchableOpacity>
             <Text style={styles.monthText}>
-              {currentMonth.getFullYear()}年 {MONTHS[currentMonth.getMonth()]}
+              {selectedYear}年 {MONTHS[selectedMonth - 1]}
             </Text>
             <TouchableOpacity onPress={() => changeMonth(1)}>
               <Ionicons name="chevron-forward" size={24} color={COLORS.text} />
@@ -278,7 +302,7 @@ export const CheckInScreen: React.FC = () => {
                   isToday(item.date) && styles.dateCellToday,
                   isSelected(item.date) && styles.dateCellSelected,
                 ]}
-                onPress={() => setSelectedDate(item.date)}
+                onPress={() => setSelectedDate(item.date.toISOString().split('T')[0])}
               >
                 <Text style={[
                   styles.dateText,
@@ -306,7 +330,7 @@ export const CheckInScreen: React.FC = () => {
           
           {mealOrder.map(mealType => {
             const meal = MEAL_TYPES[mealType]
-            const completed = todayCheckIns[mealType]
+            const completed = isMealCompleted(mealType)
             
             return (
               <TouchableOpacity

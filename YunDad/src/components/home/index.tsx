@@ -21,6 +21,15 @@ const calculateCurrentWeek = (dueDate: Date | string): number => {
 
 export function HomeTab() {
   const { user, isLoggedIn } = useUserStore()
+  const [mealStatus, setMealStatus] = useState(() => 
+    Object.keys(MEAL_TYPES).map(type => ({
+      type: type as keyof typeof MEAL_TYPES,
+      completed: false,
+      points: 10
+    }))
+  )
+  const [todayPoints, setTodayPoints] = useState(0)
+
   if (!isLoggedIn || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white">
@@ -41,15 +50,6 @@ export function HomeTab() {
     points: user?.points,
     dueDate: user?.dueDate ? new Date(user.dueDate) : null
   }
-  
-  const [mealStatus, setMealStatus] = useState(() => 
-    Object.keys(MEAL_TYPES).map(type => ({
-      type: type as keyof typeof MEAL_TYPES,
-      completed: false,
-      points: 10
-    }))
-  )
-  const [todayPoints, setTodayPoints] = useState(0)
   const tips = getTipsByWeek(userInfo.currentWeek)
   const recipes = getRecommendedRecipes()
 

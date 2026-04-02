@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { db } from '@/lib/db'
 
 // GET /api/fetal-movements - 获取胎动记录
 export async function GET(request: NextRequest) {
@@ -26,7 +24,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const movements = await prisma.fetalMovement.findMany({
+    const movements = await db.fetalMovement.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -43,16 +41,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, count, duration, notes } = body
+    const { userId, movements, duration, notes } = body
 
-    if (!userId || !count) {
+    if (!userId || !movements) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
     }
 
-    const movement = await prisma.fetalMovement.create({
+    const movement = await db.fetalMovement.create({
       data: {
         userId,
-        count: Number(count),
+        movements: Number(movements),
         duration: Number(duration) || 0,
         notes: notes || '',
       },
