@@ -10,6 +10,7 @@ export const TAB_CONFIG: Record<TabType, { label: string; icon: string }> = {
   recipe: { label: '食谱', icon: 'utensils' },
   checkin: { label: '打卡', icon: 'check-circle' },
   babybag: { label: '待产包', icon: 'package' },
+  health: { label: '健康', icon: 'heart' },
   profile: { label: '我的', icon: 'user' },
 }
 

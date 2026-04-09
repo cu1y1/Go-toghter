@@ -1,11 +1,12 @@
 'use client'
 
 import { useTabStore, TabType } from '@/store/tab-store'
-import { BottomNav } from './bottom-nav'
+import { BottomNav } from './bottom-NAV'
 import { HomeTab } from '@/components/home'
 import { RecipeTab } from '@/components/recipe'
 import { CheckInTab } from '@/components/checkin'
 import { BabyBagTab } from '@/components/babybag'
+import { HealthTab } from '@/components/health'
 import { ProfileTab } from '@/components/profile'
 
 // Tab内容映射
@@ -14,6 +15,7 @@ const tabContent: Record<TabType, React.FC> = {
   recipe: RecipeTab,
   checkin: CheckInTab,
   babybag: BabyBagTab,
+  health: HealthTab,
   profile: ProfileTab,
 }
 

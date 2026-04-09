@@ -2,9 +2,9 @@
 
 import { useUserStore } from '@/store/user-store'
 import { FetalMovementCounter } from '@/components/fetal-movement/fetal-movement-counter'
-import { PrenatalReminder } from '@/components/health/prenatal-remoteer'
+import { PrenatalReminder } from '@/components/health/prenatal-reminder'
 import { ContractionRecorder } from '@/components/health/contraction-recorder'
-import { BabyGrowth } from '@/components/health/baby- growth'
+import { BabyGrowth } from '@/components/health/baby-growth'
 import { RecipeRecommender } from '@/components/health/recipe-recommender'
 
 
