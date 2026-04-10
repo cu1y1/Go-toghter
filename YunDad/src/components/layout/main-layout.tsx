@@ -1,7 +1,7 @@
 'use client'
 
 import { useTabStore, TabType } from '@/store/tab-store'
-import { BottomNav } from './bottom-NAV'
+import { BottomNav } from './bottom-nav'
 import { HomeTab } from '@/components/home'
 import { RecipeTab } from '@/components/recipe'
 import { CheckInTab } from '@/components/checkin'
