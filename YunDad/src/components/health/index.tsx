@@ -9,7 +9,7 @@ import { RecipeRecommender } from '@/components/health/recipe-recommender'
 
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
-  if (!dueDate) return null
+  if (!dueDate) return 20
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
   const now = new Date()
   const diffTime = due.getTime() - now.getTime()
@@ -19,7 +19,7 @@ const calculateCurrentWeek = (dueDate: Date | string): number => {
 
 export function HealthTab() {
   const { user, isLoggedIn } = useUserStore()
-  const week = user?.dueDate ? calculateCurrentWeek(user.dueDate) : user?.pregnancyWeek
+  const week = user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek ?? 20)
 
   if (!isLoggedIn || !user) {
     return (

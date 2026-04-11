@@ -17,12 +17,12 @@ export function ContractionRecorder({ userId }: { userId: string }) {
   const [intensity, setIntensity] = useState('mild')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const timerRef = useRef<NodeJS.Timeout>()
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchToday = async () => { setLoading(true); setError(null); try { const res = await fetch(`/api/contractions?userId=${userId}&today= true`); const data = await res.json(); if(data.success) setTodayContractions(data.data); else throw new Error(data.error) } catch(e:any){ setError(e.message) } finally{ setLoading(false) } }
   useEffect(() => { fetchToday() }, [userId])
 
-  useEffect(() => { if(isRecording){ timerRef.current = setInterval(()=>setElapsedTime(p=>p+1),1000) } else clearInterval(timerRef.current); return()=>clearInterval(timerRef.current) }, [isRecording])
+  useEffect(() => { if(isRecording){ timerRef.current = setInterval(()=>setElapsedTime(p=>p+1),1000) } else { if(timerRef.current) clearInterval(timerRef.current) } return()=>{ if(timerRef.current) clearInterval(timerRef.current) } }, [isRecording])
 
   const startRecording = () => { setIsRecording(true); setStartTime(new Date()); setContractions([]); setElapsedTime(0) }
   const recordContraction = () => setContractions(prev => [...prev, Date.now()])
