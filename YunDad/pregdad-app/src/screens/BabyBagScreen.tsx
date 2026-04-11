@@ -17,9 +17,6 @@ import { useUserStore } from '../../../src/store/user-store'
 
 export const BabyBagScreen: React.FC = () => {
   const { 
-    categories, 
-    items, 
-    stats, 
     loading, 
     error, 
     expandedCategories, 
@@ -147,7 +144,7 @@ export const BabyBagScreen: React.FC = () => {
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity 
               style={styles.retryButton}
-              onPress={() => getBabyBagItems(userId)}
+              onPress={() => user?.id && getBabyBagItems(user.id)}
             >
               <Text style={styles.retryButtonText}>重试</Text>
             </TouchableOpacity>
