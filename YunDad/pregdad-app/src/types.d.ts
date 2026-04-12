@@ -32,3 +32,13 @@ declare module 'expo-linear-gradient' {
   }
   export class LinearGradient extends Component<LinearGradientProps> {}
 }
+
+declare module '../../../../src/lib/weekly-data' {
+  export const weeklyProgress: Array<{
+    week: number
+    size: string
+    length: number
+    weight: number
+    description: string
+  }>
+}
