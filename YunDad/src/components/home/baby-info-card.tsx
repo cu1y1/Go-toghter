@@ -10,10 +10,11 @@ interface BabyInfoCardProps {
   babyName: string
   currentWeek: number
   points: number
-  dueDate: Date
+  dueDate: Date | null
 }
 
 export function BabyInfoCard({ babyName, currentWeek, points, dueDate }: BabyInfoCardProps) {
+  const safeDueDate = dueDate ?? new Date(Date.now() + 280 * 7 * 24 * 60 * 60 * 1000)
   const babySize = getBabySizeByWeek(currentWeek)
   const levelInfo = getLevelByPoints(points)
   
@@ -22,7 +23,7 @@ export function BabyInfoCard({ babyName, currentWeek, points, dueDate }: BabyInf
   
   // 计算距离预产期天数
   const today = new Date()
-  const diffTime = dueDate.getTime() - today.getTime()
+  const diffTime = safeDueDate.getTime() - today.getTime()
   const daysToDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   
   return (

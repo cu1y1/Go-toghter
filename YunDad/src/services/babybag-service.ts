@@ -23,7 +23,7 @@ export class ServiceError extends Error {
   }
 }
 
-interface BabyBagCategory {
+export interface BabyBagCategory {
   id: string
   name: string
   icon: string
@@ -31,7 +31,7 @@ interface BabyBagCategory {
   items: BabyBagItem[]
 }
 
-interface BabyBagItem {
+export interface BabyBagItem {
   id: string
   categoryId: string
   name: string
@@ -47,7 +47,7 @@ interface BabyBagItem {
   }
 }
 
-interface BabyBagStats {
+export interface BabyBagStats {
   total: number
   prepared: number
   progress: number

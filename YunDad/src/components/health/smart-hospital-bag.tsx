@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { hospitalBagList } from '@/lib/weekly- data'
+import { hospitalBagList } from '@/lib/weekly-data'
 import { useUserStore } from '@/store/user-store'
 
 export function SmartHospitalBag() {

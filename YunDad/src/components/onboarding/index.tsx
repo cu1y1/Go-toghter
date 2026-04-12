@@ -14,6 +14,20 @@ interface OnboardingData {
   pregnancyStage: string
 }
 
+interface UserInfo {
+  id: string
+  name: string
+  babyName?: string
+  dueDate?: Date | string | null
+  pregnancyWeek?: number | null
+  level?: number
+  points?: number
+  avatar?: string | null
+  deliveryMethod?: string
+  hospitalType?: string
+  hospitalDays?: number
+}
+
 const TOTAL_STEPS = 5
 
 export function Onboarding() {
@@ -59,6 +73,9 @@ const handleComplete = () => {
       level: 1,
       points: 0,
       avatar: null,
+      deliveryMethod: 'undecided' as const,
+      hospitalType: 'single' as const,
+      hospitalDays: 3,
     }
 
     setUser(user)

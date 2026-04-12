@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 // Tab类型定义
-export type TabType = 'home' | 'recipe' | 'checkin' | 'babybag' | 'health' | 'profile'
+export type TabType = 'home' | 'recipe' | 'checkin' | 'babybag' | 'health' | 'profile' | 'onboarding'
 
 // Tab导航配置
 export const TAB_CONFIG: Record<TabType, { label: string; icon: string }> = {
@@ -11,7 +11,8 @@ export const TAB_CONFIG: Record<TabType, { label: string; icon: string }> = {
   checkin: { label: '打卡', icon: 'check-circle' },
   babybag: { label: '待产包', icon: 'package' },
   health: { label: '健康', icon: 'heart' },
-  profile: { label: '我的', icon: 'user' },
+  profile: { label: '我的', icon: 'person' },
+  onboarding: { label: '引导', icon: 'sparkles' },
 }
 
 // Tab导航状态接口

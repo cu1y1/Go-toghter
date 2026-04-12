@@ -1,64 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { PrismaClient } from '@prisma/client'
 
-// GET /api/fetal-movements - 获取胎动记录
+const prisma = new PrismaClient()
+
+// GET /api/fetal-movements - 获取胎动记录列表
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
-  const date = searchParams.get('date')
-
   try {
-    const where: any = {}
-    
-    if (userId) {
-      where.userId = userId
+    const { searchParams } = new URL(request.url)
+    const date = searchParams.get('date')
+    const userId = searchParams.get('userId')
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 })
     }
-    
+
+    const whereClause: any = { userId }
     if (date) {
-      const startDate = new Date(date)
-      const endDate = new Date(date)
-      endDate.setDate(endDate.getDate() + 1)
-      where.createdAt = {
-        gte: startDate,
-        lt: endDate,
+      const startOfDay = new Date(date)
+      startOfDay.setHours(0, 0, 0, 0)
+      const endOfDay = new Date(date)
+      endOfDay.setHours(23, 59, 59, 999)
+      whereClause.recordDate = {
+        gte: startOfDay,
+        lte: endOfDay
       }
     }
 
-    const movements = await db.fetalMovement.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+    const movements = await prisma.fetalMovement.findMany({
+      where: whereClause,
+      orderBy: { recordDate: 'desc' }
     })
 
     return NextResponse.json({ success: true, data: movements })
   } catch (error) {
     console.error('Error fetching fetal movements:', error)
-    return NextResponse.json({ success: false, error: 'Failed to fetch movements' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to fetch' }, { status: 500 })
   }
 }
 
-// POST /api/fetal-movements - 创建胎动记录
+// POST /api/fetal-movements - 新增胎动记录
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, movements, duration, notes } = body
+    const { movements: count, duration, notes, userId } = body
 
-    if (!userId || !movements) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
+    if (!userId || count === undefined) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      )
     }
 
-    const movement = await db.fetalMovement.create({
+    const movement = await prisma.fetalMovement.create({
       data: {
+        movements: count,
+        duration: duration ?? null,
+        notes: notes ?? null,
         userId,
-        movements: Number(movements),
-        duration: Number(duration) || 0,
-        notes: notes || '',
-      },
+        recordDate: new Date()
+      }
     })
 
-    return NextResponse.json({ success: true, data: movement })
+    return NextResponse.json({ success: true, data: movement }, { status: 201 })
   } catch (error) {
     console.error('Error creating fetal movement:', error)
-    return NextResponse.json({ success: false, error: 'Failed to create movement' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to create' }, { status: 500 })
   }
 }

@@ -13,6 +13,7 @@ import { CheckInScreen } from './src/screens/CheckInScreen'
 import { BabyBagScreen } from './src/screens/BabyBagScreen'
 import { ProfileScreen } from './src/screens/ProfileScreen'
 import { Onboarding } from './src/screens/Onboarding'
+import { HealthScreen } from './src/screens/HealthScreen'
 import { useUserStore } from './src/store'
 import { COLORS } from './src/constants'
 
@@ -73,6 +74,16 @@ const MainTabs = () => {
           tabBarLabel: '待产包',
           tabBarIcon: ({ color, size }) => (
             <TabBarIcon name="bag-check" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Health"
+        component={HealthScreen}
+        options={{
+          tabBarLabel: '健康',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="heart" color={color} size={size} />
           ),
         }}
       />

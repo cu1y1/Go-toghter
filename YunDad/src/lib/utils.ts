@@ -79,18 +79,16 @@ export function getBabySizeByWeek(week: number): BabySize {
  * @returns 等级信息
  */
 export function getLevelByPoints(points: number): LevelInfo {
-  // 找到当前等级
   let currentLevel = LEVEL_CONFIG[0]
-  let nextLevel = LEVEL_CONFIG[1] || null
-  
+  let nextLevel: typeof LEVEL_CONFIG[number] | null = null
+
   for (let i = 0; i < LEVEL_CONFIG.length; i++) {
     if (points >= LEVEL_CONFIG[i].minPoints && points < LEVEL_CONFIG[i].maxPoints) {
       currentLevel = LEVEL_CONFIG[i]
-      nextLevel = LEVEL_CONFIG[i + 1] || null
+      nextLevel = LEVEL_CONFIG[i + 1] ?? null
       break
     }
-    // 如果达到最高等级
-    if (points >= LEVEL_CONFIG[i].minPoints && LEVEL_CONFIG[i].maxPoints === Infinity) {
+    if (LEVEL_CONFIG[i].maxPoints === Infinity) {
       currentLevel = LEVEL_CONFIG[i]
       nextLevel = null
       break
@@ -114,7 +112,7 @@ export function getLevelByPoints(points: number): LevelInfo {
     progress,
     currentPoints: points,
     minPoints: currentLevel.minPoints,
-    maxPoints: nextLevel ? currentLevel.maxPoints : null,
+    maxPoints: nextLevel ? currentLevel.maxPoints : null as number | null,
     pointsToNext,
   }
 }

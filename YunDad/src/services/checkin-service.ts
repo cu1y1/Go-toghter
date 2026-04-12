@@ -6,7 +6,7 @@ interface CheckInRequest {
   note?: string
 }
 
-interface CheckInResponse {
+export interface CheckInResponse {
   id: string
   userId: string
   mealType: string
@@ -22,7 +22,7 @@ interface CheckInResponse {
   }
 }
 
-interface TodayCheckinsResponse {
+export interface TodayCheckinsResponse {
   date: string
   checkIns: CheckInResponse[]
   stats: {
@@ -39,7 +39,7 @@ interface DailyStats {
   mealTypes: string[]
 }
 
-interface MonthlyStatsResponse {
+export interface MonthlyStatsResponse {
   year: number
   month: number
   dailyStats: Record<string, DailyStats>

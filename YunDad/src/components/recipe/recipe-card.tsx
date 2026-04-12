@@ -27,6 +27,7 @@ export interface Recipe {
   }
   videoUrl?: string
   isFavorite: boolean
+  tags?: string[]
 }
 
 interface RecipeCardProps {

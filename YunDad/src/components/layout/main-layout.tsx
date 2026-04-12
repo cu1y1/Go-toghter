@@ -8,6 +8,7 @@ import { CheckInTab } from '@/components/checkin'
 import { BabyBagTab } from '@/components/babybag'
 import { HealthTab } from '@/components/health'
 import { ProfileTab } from '@/components/profile'
+import { Onboarding } from '@/components/onboarding'
 
 // Tab内容映射
 const tabContent: Record<TabType, React.FC> = {
@@ -17,6 +18,7 @@ const tabContent: Record<TabType, React.FC> = {
   babybag: BabyBagTab,
   health: HealthTab,
   profile: ProfileTab,
+  onboarding: Onboarding,
 }
 
 export function MainLayout() {

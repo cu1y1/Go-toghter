@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { weeklyProgress } from '@/lib/weekly-data'
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
-  if (!dueDate) return null
+  if (!dueDate) return 20
   const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
   const now = new Date()
   const diffTime = due.getTime() - now.getTime()
@@ -16,7 +16,7 @@ const calculateCurrentWeek = (dueDate: Date | string): number => {
 
 export function BabyGrowth() {
   const { user } = useUserStore()
-  const currentWeek = user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek || null)
+  const currentWeek = user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek ?? 20)
 
   const currentData = weeklyProgress.find(w => w.week === currentWeek) || weeklyProgress[19]
   const nextWeek = weeklyProgress.find(w => w.week === currentWeek + 1)

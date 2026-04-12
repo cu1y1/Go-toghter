@@ -12,9 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { useUserStore } from '../store'
-import { COLORS, MEAL_TYPES, DAILY_TIPS } from '../constants'
+import { COLORS, MEAL_TYPES } from '../constants'
 import { Card, Badge, ProgressBar } from '../components/common'
 import { getBabySizeByWeek, getLevelByPoints } from '../utils'
+import { DailyTipCard, getTipsByWeek } from '../components/home/DailyTipCard'
+import { RecommendedRecipes, getRecommendedRecipes } from '../components/home/RecommendedRecipes'
 
 const { width } = Dimensions.get('window')
 
@@ -39,7 +41,8 @@ export const HomeScreen: React.FC = () => {
 
   const babySize = getBabySizeByWeek(userInfo.currentWeek)
   const levelInfo = getLevelByPoints(userInfo.points)
-  const tip = DAILY_TIPS.find(t => t.week >= userInfo.currentWeek) || DAILY_TIPS[0]
+  const tips = getTipsByWeek(userInfo.currentWeek)
+  const recipes = getRecommendedRecipes()
 
   // 打卡处理
   const handleCheckIn = useCallback((mealType: string) => {
@@ -185,45 +188,30 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 今日小贴士 */}
-        <Card style={styles.tipCard}>
-          <View style={styles.tipHeader}>
-            <Ionicons name="bulb" size={20} color={COLORS.primary} />
-            <Text style={styles.tipTitle}>今日小贴士</Text>
-            <Badge text={tip.category} color={COLORS.primary} />
-          </View>
-          <Text style={styles.tipContent}>{tip.content}</Text>
-        </Card>
-
-        {/* 推荐食谱 */}
+        {/* 每日小贴士 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>推荐食谱</Text>
-          <ScrollView 
-            horizontal 
+          <Text style={styles.sectionTitle}>每日小贴士</Text>
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.recipeScroll}
+            contentContainerStyle={styles.tipsScroll}
           >
-            {[1, 2, 3].map((i) => (
-              <TouchableOpacity key={i} style={styles.recipeCard} activeOpacity={0.8}>
-                <Image
-                  source={{ uri: `https://images.unsplash.com/photo-${1517673400267 + i}-0251440c45dc?w=200` }}
-                  style={styles.recipeImage}
-                  accessibilityLabel={`营养食谱 ${i} 的图片`}
-                />
-                <View style={styles.recipeInfo}>
-                  <Text style={styles.recipeName} numberOfLines={1}>
-                    营养食谱 {i}
-                  </Text>
-                  <View style={styles.recipeMeta}>
-                    <Ionicons name="star" size={12} color="#FBBF24" />
-                    <Text style={styles.recipeRating}>4.{8 + i}</Text>
-                    <Text style={styles.recipeTime}> · {20 + i * 5}分钟</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
+            {tips.map((tip) => (
+              <DailyTipCard
+                key={tip.id}
+                tip={tip}
+                onViewDetail={() => console.log('查看贴士详情:', tip.id)}
+              />
             ))}
           </ScrollView>
         </View>
+
+        {/* 推荐食谱 */}
+        <RecommendedRecipes
+          recipes={recipes}
+          onRecipeClick={(id) => console.log('点击食谱:', id)}
+          onViewAll={() => console.log('查看全部食谱')}
+        />
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -450,65 +438,7 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginBottom: 6,
   },
-  tipCard: {
-    marginBottom: 20,
-  },
-  tipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  tipTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginLeft: 8,
-    flex: 1,
-  },
-  tipContent: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    lineHeight: 22,
-  },
-  recipeScroll: {
+  tipsScroll: {
     paddingRight: 16,
-  },
-  recipeCard: {
-    width: 140,
-    marginRight: 12,
-    borderRadius: 16,
-    backgroundColor: COLORS.white,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  recipeImage: {
-    width: '100%',
-    height: 100,
-  },
-  recipeInfo: {
-    padding: 10,
-  },
-  recipeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  recipeMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  recipeRating: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginLeft: 4,
-  },
-  recipeTime: {
-    fontSize: 12,
-    color: COLORS.textMuted,
   },
 })
