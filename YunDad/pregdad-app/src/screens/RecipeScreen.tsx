@@ -85,7 +85,7 @@ export const RecipeScreen: React.FC = () => {
       onPress={() => openDetail(item)}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: item.image }} style={styles.recipeImage} accessibilityLabel={`${item.name} 的图片`} />
+      <Image source={item.image ? { uri: item.image } : undefined} style={styles.recipeImage} accessibilityLabel={`${item.name} 的图片`} />
       <TouchableOpacity 
         style={styles.favoriteButton}
         onPress={() => toggleFavorite(item.id)}
@@ -179,7 +179,7 @@ export const RecipeScreen: React.FC = () => {
                   style={styles.favoriteCard}
                   onPress={() => openDetail(recipe)}
                 >
-                  <Image source={{ uri: recipe.image }} style={styles.favoriteImage} accessibilityLabel={`${recipe.name} 的图片`} />
+                  <Image source={recipe.image ? { uri: recipe.image } : undefined} style={styles.favoriteImage} accessibilityLabel={`${recipe.name} 的图片`} />
                   <Text style={styles.favoriteName} numberOfLines={1}>{recipe.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -228,7 +228,7 @@ export const RecipeScreen: React.FC = () => {
             {selectedRecipe && (
               <>
                 <Image 
-                  source={{ uri: selectedRecipe.image }} 
+                  source={selectedRecipe.image ? { uri: selectedRecipe.image } : undefined} 
                   style={styles.modalImage} 
                   accessibilityLabel={`${selectedRecipe.name} 的图片`} 
                 />
