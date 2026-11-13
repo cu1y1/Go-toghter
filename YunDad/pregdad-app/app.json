@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "孕爸爸",
+    "slug": "pregdad-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F97316"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pregdad.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "CFBundleDisplayName": "孕爸爸",
+        "NSCameraUsageDescription": "用于更换头像",
+        "NSPhotoLibraryUsageDescription": "用于选择头像图片"
+      }
+    },
+    "android": {
+      "package": "com.pregdad.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#F97316",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-image-picker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "pregdad-app"
+      }
+    }
+  }
+}

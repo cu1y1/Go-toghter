@@ -1,0 +1,97 @@
+"use client"
+
+import { useState } from 'react'
+import { BabyInfoCard } from './baby-info-card'
+import { TodayMealPlan } from './today-meal-plan'
+import { DailyTipCard, getTipsByWeek } from './daily-tip-card'
+import { RecommendedRecipes, getRecommendedRecipes } from './recommended-recipes'
+import { MEAL_TYPES } from '@/lib/constants'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { useUserStore } from '@/store/user-store'
+import { Skeleton } from '@/components/ui/skeleton'
+
+const calculateCurrentWeek = (dueDate: Date | string | null): number => {
+  if (!dueDate) return 20
+  const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
+  const now = new Date()
+  const diffTime = due.getTime() - now.getTime()
+  const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7))
+  return Math.max(1, Math.min(40, 40 - diffWeeks))
+}
+
+export function HomeTab() {
+  const { user, isLoggedIn } = useUserStore()
+  const [mealStatus, setMealStatus] = useState(() => 
+    Object.keys(MEAL_TYPES).map(type => ({
+      type: type as keyof typeof MEAL_TYPES,
+      completed: false,
+      points: 10
+    }))
+  )
+  const [todayPoints, setTodayPoints] = useState(0)
+
+  if (!isLoggedIn || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white">
+        <div className="text-center p-8">
+          <div className="text-6xl mb-4">👶</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">欢迎使用孕爸爸</h2>
+          <p className="text-gray-500">请先设置孕期信息</p>
+        </div>
+      </div>
+    )
+  }
+
+  const isLoading = false
+  
+  const userInfo = {
+    babyName: user?.babyName,
+    currentWeek: user?.dueDate ? calculateCurrentWeek(user.dueDate) : (user?.pregnancyWeek ?? 20),
+    points: user?.points,
+    dueDate: user?.dueDate ? new Date(user.dueDate) : null
+  }
+  const tips = getTipsByWeek(userInfo.currentWeek)
+  const recipes = getRecommendedRecipes()
+
+  const handleCheckIn = (mealType: keyof typeof MEAL_TYPES) => {
+    setMealStatus(prev => prev.map(m => 
+      m.type === mealType ? { ...m, completed: true } : m
+    ))
+    setTodayPoints(prev => prev + 10)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 dark:from-orange-950 dark:via-gray-900 dark:to-amber-950">
+        <ScrollArea className="h-screen">
+          <div className="max-w-lg mx-auto px-4 py-5 space-y-5 pb-24">
+            <Skeleton className="h-20 mx-auto w-48" />
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        </ScrollArea>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 dark:from-orange-950 dark:via-gray-900 dark:to-amber-950">
+      <ScrollArea className="h-screen">
+        <div className="max-w-lg mx-auto px-4 py-5 space-y-5 pb-24">
+          <div className="text-center py-2">
+            <h1 className="text-xl font-bold text-foreground">你好，准妈妈 👋</h1>
+            <p className="text-sm text-muted-foreground mt-1">今天是宝宝陪伴你的第 {userInfo.currentWeek * 7} 天</p>
+          </div>
+          
+          <BabyInfoCard {...userInfo} />
+          <TodayMealPlan mealStatus={mealStatus} todayPoints={todayPoints} onCheckIn={handleCheckIn} />
+          {tips.length > 0 && <DailyTipCard tip={tips[0]} onViewDetail={() => {}} />}
+          <RecommendedRecipes recipes={recipes} onRecipeClick={() => {}} />
+          
+          <div className="h-4" />
+        </div>
+      </ScrollArea>
+    </div>
+  )
+}
