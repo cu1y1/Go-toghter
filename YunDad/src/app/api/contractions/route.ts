@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getAuthUserId, unauthorized, forbidden } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
 // GET /api/contractions - 获取宫缩记录
 export async function GET(request: NextRequest) {
+  const userId = getAuthUserId(request)
+  if (!userId) return unauthorized()
+
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
   const today = searchParams.get('today')
 
   try {
     const where: any = {}
     
-    if (userId) where.userId = userId
+    where.userId = userId
     
     if (today === 'true') {
       const startOfDay = new Date()
@@ -39,9 +42,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, startTime, endTime, frequency, duration, interval, intensity, notes, isCompleted } = body
+    const userId = getAuthUserId(request)
+    if (!userId) return unauthorized()
 
-    if (!userId || !startTime) {
+    const { startTime, endTime, frequency, duration, interval, intensity, notes, isCompleted } = body
+
+    if (!startTime) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
     }
 

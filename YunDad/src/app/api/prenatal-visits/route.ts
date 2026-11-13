@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getAuthUserId, unauthorized, forbidden } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
 // GET /api/prenatal-visits - 获取产检记录
 export async function GET(request: NextRequest) {
+  const userId = getAuthUserId(request)
+  if (!userId) return unauthorized()
+
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
   const upcoming = searchParams.get('upcoming')
 
   try {
     const where: any = {}
     
-    if (userId) where.userId = userId
+    where.userId = userId
     if (upcoming === 'true') {
       where.visitDate = { gte: new Date() }
       where.isCompleted = false
@@ -35,9 +38,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, visitDate, week, hospital, department, doctor, purpose, result, nextVisitDate, notes } = body
+    const userId = getAuthUserId(request)
+    if (!userId) return unauthorized()
 
-    if (!userId || !visitDate) {
+    const { visitDate, week, hospital, department, doctor, purpose, result, nextVisitDate, notes } = body
+
+    if (!visitDate) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
     }
 

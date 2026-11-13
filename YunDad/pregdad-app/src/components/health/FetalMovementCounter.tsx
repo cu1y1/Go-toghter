@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
+import { apiGet, apiPost } from '../../services/apiClient'
 
 interface FetalMovement {
   id: string
@@ -24,19 +25,19 @@ export function FetalMovementCounter({ userId }: FetalMovementCounterProps) {
 
   // 获取历史记录
   useEffect(() => {
-    fetch(`/api/fetal-movements?userId=${userId}`)
-      .then(res => res.json())
+    let cancelled = false
+    apiGet<FetalMovement[]>('/api/fetal-movements')
       .then(data => {
-        if (data.success) {
-          setHistory(data.data)
-          const today = new Date().toDateString()
-          const todayMovements = data.data.filter(
-            (m: FetalMovement) => new Date(m.createdAt).toDateString() === today
-          )
-          setTodayTotal(todayMovements.reduce((sum: number, m: FetalMovement) => sum + m.count, 0))
-        }
+        if (cancelled || !data.success || !data.data) return
+        setHistory(data.data)
+        const today = new Date().toDateString()
+        const todayMovements = data.data.filter(
+          (m: FetalMovement) => new Date(m.createdAt).toDateString() === today
+        )
+        setTodayTotal(todayMovements.reduce((sum: number, m: FetalMovement) => sum + m.count, 0))
       })
-  }, [userId])
+    return () => { cancelled = true }
+  }, [])
 
   // 计时器
   useEffect(() => {
@@ -64,23 +65,15 @@ export function FetalMovementCounter({ userId }: FetalMovementCounterProps) {
 
   const stopRecording = async () => {
     setIsRecording(false)
-    
-    const movement = {
-      userId,
-      count,
-      duration: Math.ceil(elapsedTime / 60),
-      notes: '',
-    }
 
     try {
-      const res = await fetch('/api/fetal-movements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(movement),
+      const data = await apiPost<FetalMovement>('/api/fetal-movements', {
+        count,
+        duration: Math.ceil(elapsedTime / 60),
+        notes: '',
       })
-      const data = await res.json()
-      if (data.success) {
-        setHistory(prev => [data.data, ...prev])
+      if (data.success && data.data) {
+        setHistory(prev => [data.data!, ...prev])
         setTodayTotal(prev => prev + count)
       }
     } catch (error) {

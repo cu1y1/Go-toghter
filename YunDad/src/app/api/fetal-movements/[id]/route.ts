@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getAuthUserId, unauthorized } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
 // GET /api/fetal-movements/[id] - 获取单条记录
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = getAuthUserId(request)
+    if (!userId) return unauthorized()
+
     const { id } = await params
-    const movement = await prisma.fetalMovement.findUnique({
-      where: { id },
+    const movement = await prisma.fetalMovement.findFirst({
+      where: { id, userId },
     })
 
     if (!movement) {
@@ -31,7 +35,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = getAuthUserId(request)
+    if (!userId) return unauthorized()
+
     const { id } = await params
+    const existing = await prisma.fetalMovement.findFirst({ where: { id, userId } })
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+    }
+
     await prisma.fetalMovement.delete({
       where: { id },
     })

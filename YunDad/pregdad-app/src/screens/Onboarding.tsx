@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, PREGNANCY_STAGES } from '../constants'
 import { useUserStore } from '../store'
+import { useAuthStore } from '../store/auth-store'
 
 const { width, height } = Dimensions.get('window')
 
@@ -71,7 +72,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   }, [currentStep])
 
   // 完成设置
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     // 计算孕周
     let week = 20
     if (knowPregnancyWeek && pregnancyWeek) {
@@ -91,10 +92,23 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       calculatedDueDate.setDate(calculatedDueDate.getDate() + (40 - week) * 7)
     }
 
+    // 注册真实账号（静默生成设备账号，后续 P1 再提供正式登录 UI）
+    // 失败也可离线继续体验，但联网功能在登录成功后才会生效
+    const babyNameFinal = babyName || '小宝贝'
+    const reg = await useAuthStore.getState().register({
+      email: `dad_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@yundad.local`,
+      password: Math.random().toString(36).slice(2) + Date.now().toString(36),
+      babyName: babyNameFinal,
+      dueDate: calculatedDueDate,
+      pregnancyWeek: week,
+    })
+
     // 设置用户信息
     setUser({
-      id: `user-${Date.now()}`,
-      babyName: babyName || '小宝贝',
+      id: reg.ok && useAuthStore.getState().user
+        ? useAuthStore.getState().user!.id
+        : `user-${Date.now()}`,
+      babyName: babyNameFinal,
       dueDate: calculatedDueDate,
       pregnancyWeek: week,
       level: 1,

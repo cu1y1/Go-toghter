@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { User, MealType, CheckInRecord, BabyBagItem, Recipe } from '../types'
 import { DEFAULT_BABY_BAG_ITEMS } from '../constants'
+import { useAuthStore } from './auth-store'
 
 // 用户状态
 interface UserState {
@@ -18,29 +20,28 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       user: null,
       isLoggedIn: false,
-      setUser: (user) => set({ user, isLoggedIn: !!user }),
+      setUser: (user) => {
+        // 同步镜像到鉴权会话（auth-store 是接口请求的唯一 token/user 来源）
+        if (user) {
+          useAuthStore.setState({ user: { ...useAuthStore.getState().user, ...user } as never })
+        }
+        set({ user, isLoggedIn: !!user })
+      },
       updateUser: (data) => set((state) => ({
         user: state.user ? { ...state.user, ...data } : null
       })),
       updatePoints: (points) => set((state) => ({
         user: state.user ? { ...state.user, points: state.user.points + points } : null
       })),
-      logout: () => set({ user: null, isLoggedIn: false }),
+      logout: () => {
+        // 同步清除鉴权会话（ProfileScreen 退出登录调用此方法）
+        useAuthStore.getState().clearSession()
+        set({ user: null, isLoggedIn: false })
+      },
     }),
     {
       name: 'pregdad-user',
-      storage: createJSONStorage(() => ({
-        getItem: (name) => {
-          const value = localStorage.getItem(name)
-          return value
-        },
-        setItem: (name, value) => {
-          localStorage.setItem(name, value)
-        },
-        removeItem: (name) => {
-          localStorage.removeItem(name)
-        },
-      })),
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 )
@@ -78,6 +79,7 @@ export const useCheckInStore = create<CheckInState>()(
     }),
     {
       name: 'pregdad-checkin',
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 )
@@ -128,6 +130,7 @@ export const useBabyBagStore = create<BabyBagState>()(
     }),
     {
       name: 'pregdad-babybag',
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 )
@@ -154,6 +157,7 @@ export const useFavoriteStore = create<FavoriteState>()(
     }),
     {
       name: 'pregdad-favorites',
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 )

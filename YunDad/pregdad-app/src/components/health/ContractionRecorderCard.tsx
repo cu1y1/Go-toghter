@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { apiGet, apiPost } from '../../services/apiClient'
 
 interface Contraction {
   id: string
@@ -25,9 +26,8 @@ export function ContractionRecorderCard({ userId }: ContractionRecorderCardProps
   const fetchToday = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/contractions?userId=${userId}&today=true`)
-      const data = await res.json()
-      if (data.success) {
+      const data = await apiGet<Contraction[]>('/api/contractions?today=true')
+      if (data.success && data.data) {
         setTodayContractions(data.data)
       }
     } catch (e) {
@@ -38,8 +38,18 @@ export function ContractionRecorderCard({ userId }: ContractionRecorderCardProps
   }
 
   useEffect(() => {
-    fetchToday()
-  }, [userId])
+    let cancelled = false
+    apiGet<Contraction[]>('/api/contractions?today=true')
+      .then(data => {
+        if (cancelled) return
+        if (data.success && data.data) {
+          setTodayContractions(data.data)
+        }
+      })
+      .catch(e => console.error('Failed to fetch contractions:', e))
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
@@ -73,22 +83,16 @@ export function ContractionRecorderCard({ userId }: ContractionRecorderCardProps
       : 0
 
     try {
-      const res = await fetch('/api/contractions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          startTime: startTime.toISOString(),
-          endTime: new Date().toISOString(),
-          frequency: contractions.length,
-          duration: elapsedTime,
-          interval: avgInterval,
-          intensity,
-          isCompleted: true
-        })
+      const data = await apiPost<Contraction>('/api/contractions', {
+        startTime: startTime.toISOString(),
+        endTime: new Date().toISOString(),
+        frequency: contractions.length,
+        duration: elapsedTime,
+        interval: avgInterval,
+        intensity,
+        isCompleted: true
       })
-      const data = await res.json()
-      if (data.success) {
+      if (data.success && data.data) {
         setTodayContractions([data.data, ...todayContractions])
       }
     } catch (e) {

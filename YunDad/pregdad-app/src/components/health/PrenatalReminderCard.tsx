@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal } from 'react-native'
+import { apiGet, apiPost, apiPatch } from '../../services/apiClient'
 
 interface PrenatalVisit {
   id: string
@@ -30,9 +31,8 @@ export function PrenatalReminderCard({ userId }: PrenatalReminderCardProps) {
   const fetchVisits = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/prenatal-visits?userId=${userId}`)
-      const data = await res.json()
-      if (data.success) {
+      const data = await apiGet<PrenatalVisit[]>('/api/prenatal-visits')
+      if (data.success && data.data) {
         setVisits(data.data)
         setUpcomingVisits(
           data.data.filter((v: PrenatalVisit) => 
@@ -45,7 +45,7 @@ export function PrenatalReminderCard({ userId }: PrenatalReminderCardProps) {
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [])
 
   useEffect(() => {
     fetchVisits()
@@ -53,17 +53,11 @@ export function PrenatalReminderCard({ userId }: PrenatalReminderCardProps) {
 
   const handleSubmit = async () => {
     try {
-      const res = await fetch('/api/prenatal-visits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          userId,
-          week: parseInt(formData.week) || 0
-        })
+      const data = await apiPost<PrenatalVisit>('/api/prenatal-visits', {
+        ...formData,
+        week: parseInt(formData.week) || 0
       })
-      const data = await res.json()
-      if (data.success) {
+      if (data.success && data.data) {
         setVisits([data.data, ...visits])
         if (new Date(data.data.visitDate) >= new Date()) {
           setUpcomingVisits([data.data, ...upcomingVisits])
@@ -78,11 +72,7 @@ export function PrenatalReminderCard({ userId }: PrenatalReminderCardProps) {
 
   const markCompleted = async (id: string) => {
     try {
-      await fetch(`/api/prenatal-visits/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isCompleted: true })
-      })
+      await apiPatch(`/api/prenatal-visits/${id}`, { isCompleted: true })
       setVisits(visits.map(v => v.id === id ? { ...v, isCompleted: true } : v))
       setUpcomingVisits(upcomingVisits.filter(v => v.id !== id))
     } catch (err) {

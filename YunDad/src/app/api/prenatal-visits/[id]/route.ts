@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getAuthUserId, unauthorized } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
 // GET /api/prenatal-visits/[id] - 获取单条记录
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = getAuthUserId(request)
+    if (!userId) return unauthorized()
+
     const { id } = await params
-    const visit = await prisma.prenatalVisit.findUnique({
-      where: { id },
+    const visit = await prisma.prenatalVisit.findFirst({
+      where: { id, userId },
     })
 
     if (!visit) {
@@ -31,7 +35,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = getAuthUserId(request)
+    if (!userId) return unauthorized()
+
     const { id } = await params
+    const existing = await prisma.prenatalVisit.findFirst({ where: { id, userId } })
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+    }
+
     await prisma.prenatalVisit.delete({
       where: { id },
     })

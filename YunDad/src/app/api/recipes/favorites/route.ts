@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getAuthUserId, unauthorized } from '@/lib/auth'
 
 // 获取收藏列表
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1', 10)

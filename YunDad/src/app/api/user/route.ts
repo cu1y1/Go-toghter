@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { randomUUID } from 'crypto'
+import { getAuthUserId, unauthorized } from '@/lib/auth'
 
 // 获取用户信息
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const user = await db.user.findUnique({
       where: { id: userId },
@@ -50,98 +45,20 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 用户注册（支持游客模式）
+// 注册已迁移至 /api/auth（统一签发 token）。此端点冻结，禁止再创建用户。
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { email, password, babyName, dueDate, isGuest } = body
-
-    // 游客模式
-    if (isGuest) {
-      const guestEmail = `guest_${randomUUID()}@guest.local`
-
-      const user = await db.user.create({
-        data: {
-          email: guestEmail,
-          password: null,
-          babyName: babyName || null,
-          dueDate: dueDate ? new Date(dueDate) : null,
-          level: 1,
-          points: 0,
-        },
-      })
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: user.id,
-          email: user.email,
-          isGuest: true,
-        },
-        message: '游客账号创建成功',
-      })
-    }
-
-    // 正常注册
-    if (!email) {
-      return NextResponse.json(
-        { success: false, error: '邮箱不能为空' },
-        { status: 400 }
-      )
-    }
-
-    // 检查邮箱是否已存在
-    const existingUser = await db.user.findUnique({
-      where: { email },
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        { success: false, error: '该邮箱已被注册' },
-        { status: 400 }
-      )
-    }
-
-    const user = await db.user.create({
-      data: {
-        email,
-        password: password || null,
-        babyName: babyName || null,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        level: 1,
-        points: 0,
-      },
-    })
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        isGuest: false,
-      },
-      message: '注册成功',
-    })
-  } catch (error) {
-    console.error('用户注册失败:', error)
-    return NextResponse.json(
-      { success: false, error: '服务器错误' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json(
+    { success: false, error: '注册已迁移至 /api/auth，请使用新接口' },
+    { status: 410 }
+  )
 }
 
 // 更新用户信息
 export async function PUT(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const body = await request.json()
     const { babyName, dueDate, pregnancyWeek, avatar } = body

@@ -12,8 +12,8 @@ import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, BABY_BAG_CATEGORIES } from '../constants'
 import { Card, ProgressBar } from '../components/common'
-import { useBabyBagStore } from '../../../src/store/babybag-store'
-import { useUserStore } from '../../../src/store/user-store'
+import { useBabyBagStore } from '../store/babybag-store'
+import { useUserStore } from '../store'
 
 export const BabyBagScreen: React.FC = () => {
   const { 
@@ -41,10 +41,10 @@ export const BabyBagScreen: React.FC = () => {
 
   // 获取待产包物品数据
   useEffect(() => {
-    if (isLoggedIn && user?.id) {
-      getBabyBagItems(user.id)
+    if (isLoggedIn) {
+      getBabyBagItems()
     }
-  }, [getBabyBagItems, isLoggedIn, user?.id])
+  }, [getBabyBagItems, isLoggedIn])
 
   // 添加自定义物品
   const handleAddItem = useCallback(() => {
@@ -58,7 +58,7 @@ export const BabyBagScreen: React.FC = () => {
       return
     }
 
-    addItem(user.id, newItemCategory, newItemName.trim())
+    addItem(undefined, newItemCategory, newItemName.trim())
       .then((success) => {
         if (success) {
           setNewItemName('')
@@ -86,7 +86,7 @@ export const BabyBagScreen: React.FC = () => {
           text: '删除', 
           style: 'destructive',
           onPress: () => {
-            deleteItem(user.id, itemId)
+            deleteItem(undefined, itemId)
               .then((success) => {
                 if (!success) {
                   Alert.alert('失败', '删除物品失败，请稍后重试')
@@ -144,7 +144,7 @@ export const BabyBagScreen: React.FC = () => {
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity 
               style={styles.retryButton}
-              onPress={() => user?.id && getBabyBagItems(user.id)}
+              onPress={() => user?.id && getBabyBagItems()}
             >
               <Text style={styles.retryButtonText}>重试</Text>
             </TouchableOpacity>
@@ -263,7 +263,7 @@ export const BabyBagScreen: React.FC = () => {
                       ]}
                       onPress={() => {
                         if (isLoggedIn && user?.id) {
-                          toggleItem(user.id, item.id)
+                          toggleItem(undefined, item.id)
                         }
                       }}
                       activeOpacity={0.8}

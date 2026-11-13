@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getAuthUserId, unauthorized } from '@/lib/auth'
 
 // 收藏食谱
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const body = await request.json()
     const { recipeId } = body
@@ -77,14 +73,9 @@ export async function POST(request: NextRequest) {
 // 取消收藏
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const { searchParams } = new URL(request.url)
     const recipeId = searchParams.get('recipeId')

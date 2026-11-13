@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getAuthUserId, unauthorized, forbidden } from '@/lib/auth'
 
 // 更新物品状态
 export async function PUT(
@@ -7,15 +8,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
     const { id } = await params
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const body = await request.json()
     const { isPrepared, name, description } = body
@@ -86,15 +82,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
     const { id } = await params
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     // 检查物品是否存在且属于用户
     const existingItem = await db.babyBagItem.findFirst({
