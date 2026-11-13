@@ -5,6 +5,7 @@ import { BabyGrowthCard } from '../components/health/BabyGrowthCard'
 import { FetalMovementCounter } from '../components/health/FetalMovementCounter'
 import { PrenatalReminderCard } from '../components/health/PrenatalReminderCard'
 import { ContractionRecorderCard } from '../components/health/ContractionRecorderCard'
+import WeightCard from '../components/health/WeightCard'
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
   if (!dueDate) return 20
@@ -32,6 +33,8 @@ export function HealthScreen() {
       <Text style={styles.title}>健康监测</Text>
       
       <BabyGrowthCard />
+      
+      <WeightCard />
       
       <FetalMovementCounter userId={user?.id} />
       
