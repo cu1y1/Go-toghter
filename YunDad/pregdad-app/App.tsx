@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { HomeScreen, RecipeScreen, CheckInScreen, BabyBagScreen, ProfileScreen, HealthScreen, AiScreen, PartnerScreen, Onboarding } from './src/screens'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 
-import { HomeScreen } from './src/screens/HomeScreen'
-import { RecipeScreen } from './src/screens/RecipeScreen'
-import { CheckInScreen } from './src/screens/CheckInScreen'
-import { BabyBagScreen } from './src/screens/BabyBagScreen'
-import { ProfileScreen } from './src/screens/ProfileScreen'
-import { Onboarding } from './src/screens/Onboarding'
-import { HealthScreen } from './src/screens/HealthScreen'
 import { useUserStore } from './src/store'
 import { useAuthStore } from './src/store/auth-store'
 import { COLORS } from './src/constants'
@@ -85,6 +79,26 @@ const MainTabs = () => {
           tabBarLabel: '健康',
           tabBarIcon: ({ color, size }) => (
             <TabBarIcon name="heart" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Ai"
+        component={AiScreen}
+        options={{
+          tabBarLabel: 'AI助手',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="sparkles" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Partner"
+        component={PartnerScreen}
+        options={{
+          tabBarLabel: '家庭',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="people" color={color} size={size} />
           ),
         }}
       />
