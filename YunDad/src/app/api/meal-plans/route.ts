@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getAuthUserId, unauthorized } from '@/lib/auth'
 
 // 获取今日饮食计划
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const { searchParams } = new URL(request.url)
     const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0]
@@ -91,14 +87,9 @@ export async function GET(request: NextRequest) {
 // 添加饮食计划
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const body = await request.json()
     const { recipeId, mealType, planDate } = body
@@ -175,14 +166,9 @@ export async function POST(request: NextRequest) {
 // 删除饮食计划
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const { searchParams } = new URL(request.url)
     const planId = searchParams.get('id')

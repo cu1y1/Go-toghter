@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getAuthUserId, unauthorized } from '@/lib/auth'
 
 // 获取待产包物品
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
+    if (!userId) return unauthorized()
 
     // 获取所有分类
     const categories = await db.babyBagCategory.findMany({
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
           where: {
             OR: [
               { isDefault: true },
-              { userId: userId || undefined },
+              { userId },
             ],
           },
           orderBy: { sortOrder: 'asc' },
@@ -54,14 +56,9 @@ export async function GET(request: NextRequest) {
 // 添加自定义物品
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const userId = getAuthUserId(request)
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: '未授权访问' },
-        { status: 401 }
-      )
-    }
+    if (!userId) return unauthorized()
 
     const body = await request.json()
     const { categoryId, name, description } = body

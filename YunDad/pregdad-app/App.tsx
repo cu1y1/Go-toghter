@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { HomeScreen, RecipeScreen, CheckInScreen, BabyBagScreen, ProfileScreen, HealthScreen, AiScreen, PartnerScreen, Onboarding } from './src/screens'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 
-import { HomeScreen } from './src/screens/HomeScreen'
-import { RecipeScreen } from './src/screens/RecipeScreen'
-import { CheckInScreen } from './src/screens/CheckInScreen'
-import { BabyBagScreen } from './src/screens/BabyBagScreen'
-import { ProfileScreen } from './src/screens/ProfileScreen'
-import { Onboarding } from './src/screens/Onboarding'
-import { HealthScreen } from './src/screens/HealthScreen'
 import { useUserStore } from './src/store'
+import { useAuthStore } from './src/store/auth-store'
 import { COLORS } from './src/constants'
 
 const Tab = createBottomTabNavigator()
@@ -88,6 +83,26 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
+        name="Ai"
+        component={AiScreen}
+        options={{
+          tabBarLabel: 'AI助手',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="sparkles" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Partner"
+        component={PartnerScreen}
+        options={{
+          tabBarLabel: '家庭',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="people" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
@@ -118,24 +133,41 @@ const SplashScreen = () => (
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true)
+  const [hasSession, setHasSession] = useState(false)
   const { isLoggedIn, setUser } = useUserStore()
 
-  // 模拟启动加载
+  // 启动时恢复登录会话（AsyncStorage 中的 token + 服务端校验）
   useEffect(() => {
-    const timer = setTimeout(() => {
+    (async () => {
+      const { token, user, restore } = useAuthStore.getState()
+      if (token && user) {
+        const ok = await restore()
+        if (ok) {
+          const u = useAuthStore.getState().user!
+          setUser({
+            id: u.id,
+            babyName: u.babyName || '小宝贝',
+            dueDate: u.dueDate ? new Date(u.dueDate) : new Date(),
+            pregnancyWeek: u.pregnancyWeek ?? 1,
+            level: u.level ?? 1,
+            points: u.points ?? 0,
+            avatar: (u.avatar as string | null) ?? null,
+            createdAt: new Date(),
+          })
+          setHasSession(true)
+        }
+      }
       setIsLoading(false)
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [])
+    })()
+  }, [setUser])
 
   // 显示启动画面
   if (isLoading) {
     return <SplashScreen />
   }
 
-  // 显示引导流程
-  if (!isLoggedIn) {
+  // 显示引导流程（新用户）
+  if (!isLoggedIn && !hasSession) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top']}>

@@ -23,6 +23,8 @@ model User {
   deliveryMethod String?  // 分娩方式：natural(顺产)/cesarean(剖宫产)/undecided(未决定)
   hospitalType   String?  // 医院病房类型：single(单人间)/double(双人间)/multi(多人间)
   hospitalDays   Int      @default(3) // 计划住院天数
+  heightCm            Float?   // 身高cm（BMI计算用）
+  prePregnancyWeight  Float?   // 孕前体重kg（BMI/增重曲线基准）
   level          Int      @default(1) // 用户等级 1-6
   points         Int      @default(0) // 积分
   avatar         String?  // 头像URL
@@ -37,9 +39,46 @@ model User {
   fetalMovements   FetalMovement[]
   contractions     Contraction[]
   prenatalVisits   PrenatalVisit[]
+  weightRecords    WeightRecord[]
+  pushTokens       PushToken[]
 
   @@index([email])
   @@index([level])
+}
+
+// ============================================
+// 体重记录（孕期增重曲线）
+// ============================================
+model WeightRecord {
+  id             String   @id @default(cuid())
+  userId         String   // 关联用户
+  weightKg       Float    // 当日体重
+  recordDate     DateTime // 记录日期（按天去重）
+  week           Int?     // 记录时的孕周（冗余，方便曲线查询）
+  note           String?  // 备注
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recordDate])
+  @@index([userId, recordDate])
+}
+
+// ============================================
+// 推送令牌（真实推送）
+// ============================================
+model PushToken {
+  id             String   @id @default(cuid())
+  userId         String   // 关联用户
+  token          String   @unique // Expo push token
+  platform       String?  // ios/android/web
+  enabled        Boolean  @default(true) // 用户开关
+  lastActiveAt   DateTime @default(now()) // 最后活跃（清理僵尸token）
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([enabled])
 }
 
 // ============================================

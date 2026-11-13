@@ -191,7 +191,7 @@ export const CheckInScreen: React.FC = () => {
   
   // 判断是否选中
   const isSelected = (date: Date) => {
-    return date.toDateString() === new Date(storeSelectedDate).toDateString()
+    return date.toDateString() === (storeSelectedDate ? new Date(storeSelectedDate).toDateString() : '')
   }
   
   // 检查餐食是否已打卡
