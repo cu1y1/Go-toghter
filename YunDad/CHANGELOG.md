@@ -59,3 +59,13 @@
 
 ### 决策
 - master 冲突策略：远端与baseline内容级一致，29个add/add冲突统一取本地版（含11个功能commit），剔除__MACOSX垃圾与workspace-state不入库
+
+## 2026-11-16（午）· GLM真实模式上线 + 服务固化
+
+### 完成
+- **AI 切真实 GLM**（y总批key）：AI_MODE=glm，glm-4-flash 实测通过——问答15s正常返回+免责声明自带；产检单解读结构化输出正常（概览/关键指标/建议关注/就医提示），12s 返回
+- **服务固化**：发现 3000 端口被遗留 demo 服务（oc-app-3000.service）抢占致 404；已 stop+disable；新建 yundad.service（systemd user，Restart=always，MemoryMax=600M）接管 3000
+- 内存优化：NODE_OPTIONS 320MB 堆 + --optimize-for-size，实测常驻 ~76MB，OOM 风险解除
+
+### 教训
+- 服务器 3.5G 内存，OpenClaw 网关占 2G：standalone 无内存限制裸跑会被 OOM 秒杀；用 systemd MemoryMax+小堆规避
