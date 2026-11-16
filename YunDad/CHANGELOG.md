@@ -71,6 +71,20 @@
 ### 插曲
 - 发现主库 dev.db 自 11-13 晚起就是 0 字节（存活的是旧 standalone 实例的存量文件）；重启后暴露。按既定方案 prisma db push 重建（库中仅自测账号，无真实数据，无损）
 
+## 2026-11-16（下午）· 准爸妈绑定重构上线
+
+### 完成
+- 发现旧实现数据缺陷：raw SQL 自建表 + 反向行 + 无唯一约束 → 一人多码被绑后 status 返回错误 partner；设计不可靠
+- **重构**：新 Couple 模型（@@unique([partnerAId,status])+@@unique([partnerBId,status]) 数据库层硬约束一人一条有效绑定）；BindCode 转正为 Prisma 模型；绑定/解绑走事务
+- 新增解绑（单方解绑，关系作废可重绑）；App 端 PartnerScreen 加解除绑定按钮，契约对齐
+- 9 项回归全过：生成码/绑定/双向status/再生成409/旧码重放409/互斥拒绝409/解绑/解绑后重绑/无token 401；App tsc 0 错误
+- commit 1bc91a8 已推 master
+
+### 教训
+- **standalone 内嵌 Prisma client 必须随 schema 重新构建同步**：本次 standalone 内 client 的 BindCode 元数据缺 updatedAt 字段 → create 报 Null constraint violation；重新 npm run build 后自然同步。dmmf 校验命令：`pc._runtimeDataModel.models.X.fields`
+- 新表进 schema 时 @updatedAt 是隐形必选项，漏掉只在写操作时暴露
+- raw SQL 自建表的"免 migration"捷径在数据模型变复杂后必还债，能转 Prisma 模型尽早转
+
 ### 教训
 - “服务活着”≠“库文件健康”：prisma 查询全空/0字节库文件时，先查文件本身再查服务；重建前必须确认库中无真实用户数据
 
