@@ -1,109 +1,125 @@
-// 准爸妈绑定：8位数字邀请码方案（最简可用）
-// 流程：爸爸生成邀请码(10分钟有效) → 妈妈小程序/端输入码 → 绑定为夫妻关系
-// MVP 先做单端模型：绑定关系存 BindCode 表，妈妈端 App 版二期跟进（微信小程序端需单独审核）
+// 准爸妈绑定：8位数字邀请码方案
+// 流程：任一方生成邀请码(10分钟有效) → 对方输入码 → 建立 Couple 关系（数据库层硬约束一人一条）
+// 数据模型：BindCode（邀请码 pending→bound）+ Couple（绑定关系，@@unique 防一人多绑）
 
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getAuthUserId, unauthorized } from '@/lib/auth'
+import { db } from '@/lib/db'
 
-const prisma = new PrismaClient()
+const TTL_MINUTES = 10
 
-// 确保表存在（免 migration 阻塞）
-async function ensureTable() {
-  await prisma.$executeRawUnsafe(
-    `CREATE TABLE IF NOT EXISTS BindCode (
-      id TEXT PRIMARY KEY,
-      code TEXT UNIQUE,
-      creatorId TEXT,
-      partnerId TEXT,
-      status TEXT DEFAULT 'pending',
-      expiresAt DATETIME,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  )
-  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS idx_bindcode_creator ON BindCode(creatorId)`).catch(() => {})
+function expired(d: Date): boolean {
+  return new Date(d).getTime() < Date.now()
 }
 
-// POST /api/partner/bind - { action: 'create' | 'join' | 'status' }
-// create: 生成我的邀请码；join: { code } 输入对方邀请码绑定；status: 查询绑定状态
+// POST /api/partner/bind - { action: 'create' | 'join' | 'status' | 'unbind' }
 export async function POST(request: NextRequest) {
   try {
     const userId = getAuthUserId(request)
     if (!userId) return unauthorized()
-    await ensureTable()
 
     const body = await request.json()
     const action = body.action
 
+    // ---------- 查询绑定状态 ----------
+    if (action === 'status') {
+      const couple = await db.couple.findFirst({
+        where: { status: 'active', OR: [{ partnerAId: userId }, { partnerBId: userId }] },
+        orderBy: { createdAt: 'desc' },
+      })
+      if (!couple) return NextResponse.json({ success: true, data: { bound: false } })
+      const partnerId = couple.partnerAId === userId ? couple.partnerBId : couple.partnerAId
+      return NextResponse.json({ success: true, data: { bound: true, partnerId, boundAt: couple.createdAt } })
+    }
+
+    // ---------- 生成邀请码 ----------
     if (action === 'create') {
-      // 已有未过期码则复用
-      const existing = await prisma.$queryRawUnsafe<Array<{ code: string; expiresAt: Date }>>(
-        `SELECT code, expiresAt FROM BindCode WHERE creatorId = ? AND status = 'pending' AND expiresAt > datetime('now') LIMIT 1`,
-        userId
-      )
-      if (existing.length) {
-        return NextResponse.json({ success: true, data: { code: existing[0].code, expiresAt: existing[0].expiresAt } })
+      // 已绑定则不允许再生成
+      const existed = await db.couple.findFirst({
+        where: { status: 'active', OR: [{ partnerAId: userId }, { partnerBId: userId }] },
+      })
+      if (existed) {
+        return NextResponse.json({ success: false, error: '您已绑定另一半，无需再生成邀请码' }, { status: 409 })
       }
-      // 生成8位数字码，冲突重试
+      // 未过期的 pending 码复用
+      const pending = await db.bindCode.findFirst({
+        where: { creatorId: userId, status: 'pending', expiresAt: { gt: new Date() } },
+      })
+      if (pending) {
+        return NextResponse.json({
+          success: true,
+          data: { code: pending.code, expiresAt: pending.expiresAt, ttlMinutes: TTL_MINUTES },
+        })
+      }
+      // 旧 pending 码作废（一人一条 pending 的硬约束）
+      await db.bindCode.updateMany({ where: { creatorId: userId, status: 'pending' }, data: { status: 'expired' } })
+      // 生成8位数字码，唯一冲突重试
       for (let i = 0; i < 5; i++) {
         const code = String(Math.floor(10000000 + Math.random() * 90000000))
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
         try {
-          await prisma.$executeRawUnsafe(
-            `INSERT INTO BindCode (id, code, creatorId, status, expiresAt) VALUES (?, ?, ?, 'pending', ?)`,
-            `bc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, code, userId, expiresAt.toISOString()
-          )
-          return NextResponse.json({ success: true, data: { code, expiresAt, ttlMinutes: 10 } })
-        } catch { /* code冲突重试 */ }
+          const row = await db.bindCode.create({
+            data: {
+              code,
+              creatorId: userId,
+              expiresAt: new Date(Date.now() + TTL_MINUTES * 60 * 1000),
+            },
+          })
+          return NextResponse.json({
+            success: true,
+            data: { code: row.code, expiresAt: row.expiresAt, ttlMinutes: TTL_MINUTES },
+          })
+        } catch { /* code 冲突重试 */ }
       }
       return NextResponse.json({ success: false, error: '生成邀请码失败，请重试' }, { status: 500 })
     }
 
+    // ---------- 输码绑定 ----------
     if (action === 'join') {
       const code = typeof body.code === 'string' ? body.code.trim() : ''
       if (!/^\d{8}$/.test(code)) {
         return NextResponse.json({ success: false, error: '邀请码为8位数字' }, { status: 400 })
       }
-      const rows = await prisma.$queryRawUnsafe<Array<{ id: string; creatorId: string; status: string; expiresAt: Date }>>(
-        `SELECT id, creatorId, status, expiresAt FROM BindCode WHERE code = ? LIMIT 1`,
-        code
-      )
-      if (!rows.length) return NextResponse.json({ success: false, error: '邀请码不存在' }, { status: 404 })
-      const row = rows[0]
-      if (new Date(row.expiresAt).getTime() < Date.now()) {
+      const row = await db.bindCode.findUnique({ where: { code } })
+      if (!row) return NextResponse.json({ success: false, error: '邀请码不存在' }, { status: 404 })
+      if (row.status !== 'pending') {
+        return NextResponse.json({ success: false, error: '该邀请码已被使用' }, { status: 409 })
+      }
+      if (expired(row.expiresAt)) {
         return NextResponse.json({ success: false, error: '邀请码已过期，请让对方重新生成' }, { status: 410 })
       }
       if (row.creatorId === userId) {
         return NextResponse.json({ success: false, error: '不能绑定自己' }, { status: 400 })
       }
-      if (row.status === 'bound') {
-        return NextResponse.json({ success: false, error: '该邀请码已被使用' }, { status: 409 })
+      // 双方任一已有有效绑定则拒绝
+      const busy = await db.couple.findFirst({
+        where: {
+          status: 'active',
+          OR: [{ partnerAId: userId }, { partnerBId: userId }, { partnerAId: row.creatorId }, { partnerBId: row.creatorId }],
+        },
+      })
+      if (busy) {
+        const busyIsCreator = busy.partnerAId === row.creatorId || busy.partnerBId === row.creatorId
+        return NextResponse.json(
+          { success: false, error: busyIsCreator ? '对方已绑定另一半' : '您已绑定另一半' },
+          { status: 409 }
+        )
       }
-      // 绑定：双向记录（partnerId 记对方；creator 的码置 bound）
-      await prisma.$executeRawUnsafe(
-        `UPDATE BindCode SET status = 'bound', partnerId = ? WHERE id = ?`,
-        userId, row.id
-      )
-      // 把对方的绑定信息也记一条（反向查询用）
-      await prisma.$executeRawUnsafe(
-        `INSERT OR REPLACE INTO BindCode (id, code, creatorId, partnerId, status, expiresAt, createdAt)
-         VALUES (?, ?, ?, ?, 'bound', ?, CURRENT_TIMESTAMP)`,
-        `bc_rev_${row.id}`, code, userId, row.creatorId, row.expiresAt
-      )
+      // 事务：码置 bound + 建立 Couple
+      await db.$transaction([
+        db.bindCode.update({ where: { id: row.id }, data: { status: 'bound', partnerId: userId } }),
+        db.couple.create({ data: { partnerAId: row.creatorId, partnerBId: userId } }),
+      ])
       return NextResponse.json({ success: true, data: { partnerId: row.creatorId, boundAt: new Date().toISOString() } })
     }
 
-    if (action === 'status') {
-      const rows = await prisma.$queryRawUnsafe<Array<{ creatorId: string; partnerId: string | null; status: string }>>(
-        `SELECT creatorId, partnerId, status FROM BindCode WHERE (creatorId = ? OR partnerId = ?) AND status = 'bound' ORDER BY createdAt DESC LIMIT 1`,
-        userId, userId
-      )
-      if (!rows.length) return NextResponse.json({ success: true, data: { bound: false } })
-      const r = rows[0]
-      return NextResponse.json({
-        success: true,
-        data: { bound: true, partnerId: r.creatorId === userId ? r.partnerId : r.creatorId },
+    // ---------- 解绑（双向确认一期简化为单方解绑，关系作废） ----------
+    if (action === 'unbind') {
+      const couple = await db.couple.findFirst({
+        where: { status: 'active', OR: [{ partnerAId: userId }, { partnerBId: userId }] },
       })
+      if (!couple) return NextResponse.json({ success: false, error: '当前无绑定关系' }, { status: 404 })
+      await db.couple.update({ where: { id: couple.id }, data: { status: 'dissolved' } })
+      return NextResponse.json({ success: true, data: { unbound: true } })
     }
 
     return NextResponse.json({ success: false, error: '未知操作' }, { status: 400 })

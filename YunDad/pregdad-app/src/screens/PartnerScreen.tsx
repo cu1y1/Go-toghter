@@ -9,7 +9,7 @@ interface BindStatus {
   partnerId?: string
 }
 
-// 家庭绑定页：生成/输入 8 位邀请码，绑定准爸妈
+// 家庭绑定页：生成/输入 8 位邀请码，绑定准爸妈；已绑后可解绑
 export default function PartnerScreen() {
   const [status, setStatus] = useState<BindStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,6 +73,22 @@ export default function PartnerScreen() {
     }
   }, [inputCode, load])
 
+  const doUnbind = useCallback(async () => {
+    setBusy(true)
+    setMsg(null)
+    try {
+      const res = await apiPost<{ unbound: boolean }>('/api/partner/bind', { action: 'unbind' })
+      if (res.success) {
+        setMsg('已解绑')
+        await load()
+      } else {
+        setMsg(res.error ?? '解绑失败，请重试')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }, [load])
+
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -89,7 +105,11 @@ export default function PartnerScreen() {
           <Text style={styles.boundTitle}>已与另一半绑定</Text>
           <Text style={styles.boundSub}>你们的打卡、产检提醒将同步可见{'\n'}（对方动态展示二期上线）</Text>
         </View>
-        <Text style={styles.disclaimer}>如需更换绑定对象，请联系客服处理（MVP 阶段暂不支持解绑）。</Text>
+        <Text style={styles.disclaimer}>解绑后双方将不再互见数据；如需重新绑定，生成新邀请码即可。</Text>
+        <TouchableOpacity style={[styles.dangerBtn, busy && styles.btnDisabled]} onPress={doUnbind} disabled={busy}>
+          <Text style={styles.dangerBtnText}>解除绑定</Text>
+        </TouchableOpacity>
+        {!!msg && <Text style={[styles.msg, msg.includes('解绑') ? styles.msgOk : styles.msgErr]}>{msg}</Text>}
       </ScrollView>
     )
   }
@@ -163,6 +183,8 @@ const styles = StyleSheet.create({
   msg: { fontSize: 13, textAlign: 'center', marginTop: 6 },
   msgOk: { color: COLORS.success },
   msgErr: { color: COLORS.error },
+  dangerBtn: { backgroundColor: COLORS.white, borderWidth: 1.5, borderColor: COLORS.error, borderRadius: 12, paddingVertical: 11, alignItems: 'center', marginTop: 18 },
+  dangerBtnText: { color: COLORS.error, fontSize: 15, fontWeight: '600' },
   boundCard: { backgroundColor: COLORS.white, borderRadius: 16, padding: 30, alignItems: 'center', marginTop: 40 },
   boundTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginTop: 14 },
   boundSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 8, textAlign: 'center', lineHeight: 20 },

@@ -47,6 +47,37 @@ model User {
 }
 
 // ============================================
+// 准爸妈绑定（一人最多一条有效绑定，数据库层硬约束）
+// ============================================
+model Couple {
+  id            String   @id @default(cuid())
+  partnerAId    String // 邀请码创建者
+  partnerBId    String // 输码加入者
+  status        String   @default("active") // active | dissolved
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([partnerAId, status])
+  @@unique([partnerBId, status])
+  @@index([partnerAId])
+  @@index([partnerBId])
+}
+
+// 邀请码（pending → bound；一人仅一条 pending）
+model BindCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  creatorId String
+  partnerId String?
+  status    String   @default("pending")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([creatorId])
+}
+
+// ============================================
 // 体重记录（孕期增重曲线）
 // ============================================
 model WeightRecord {
