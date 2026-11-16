@@ -18,8 +18,11 @@ export interface AiResult {
 }
 
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
-// 免费档模型：glm-4-flash（智谱宣布免费）；备选 glm-4-flash-250414
-const GLM_MODEL = process.env.AI_MODEL || 'glm-4-flash'
+// 模型：默认 glm-5.3-flash（最新普惠档，¥0.8/2.8 每百万token，限流10次/时/用户下月成本≈¥3-5，经y总批准 2026-11-16）
+// 备选：glm-4.7-flash（完全免费，200K 上下文；4.5-flash 将于2026-01-30下线，官方指定路由至此）
+const GLM_MODEL = process.env.AI_MODEL || 'glm-5.3-flash'
+// glm-5 系列为“始终思考”模型：用 low 档控制成本与延迟；设 AI_THINKING_EFFORT=off 可关闭注入
+const GLM_THINKING_EFFORT = process.env.AI_THINKING_EFFORT || 'low'
 
 export function getAiMode(): AiMode {
   const key = process.env.AI_API_KEY
@@ -43,19 +46,24 @@ async function glmChat(messages: AiChatMessage[], maxTokens: number): Promise<Ai
   if (!key) return { ok: false, content: '', mode: 'mock', error: 'AI_API_KEY 未配置' }
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30000)
+    const timeout = setTimeout(() => controller.abort(), 45000)
+    const body: Record<string, unknown> = {
+      model: GLM_MODEL,
+      messages,
+      max_tokens: maxTokens,
+      temperature: 0.6,
+    }
+    // glm-5.* 始终思考模型：必须显式传 thinking，否则报 1210；effort=low 控制成本
+    if (GLM_THINKING_EFFORT !== 'off' && /^glm-5\./.test(GLM_MODEL)) {
+      body.thinking = { type: 'enabled', clear_thinking: false, effort: GLM_THINKING_EFFORT }
+    }
     const res = await fetch(GLM_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${key}`,
       },
-      body: JSON.stringify({
-        model: GLM_MODEL,
-        messages,
-        max_tokens: maxTokens,
-        temperature: 0.6,
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     })
     clearTimeout(timeout)
