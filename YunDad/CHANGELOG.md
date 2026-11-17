@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-11-17
+
+### 进行中（WIP 已存档）
+- App 升级：Expo SDK 55 → 58（package.json + 依赖版本，node_modules 已装 expo 58.0.25）；BabyGrowthCard 相对路径修复；dev 接口指向公网 IP。待补 tsc 自测后继续。
+
 ## 2026-11-13
 
 ### 新增
