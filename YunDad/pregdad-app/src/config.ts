@@ -9,7 +9,7 @@
 export const API_BASE_URL: string = (() => {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL
   if (fromEnv) return fromEnv.replace(/\/+$/, '')
-  if (__DEV__) return 'http://localhost:3000'
+  if (__DEV__) return 'http://39.104.80.135:3000'
   // 生产未配置时显式暴露问题，而不是静默打空
   console.warn('[config] EXPO_PUBLIC_API_URL 未设置，生产包接口将不可用')
   return ''

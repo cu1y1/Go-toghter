@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useUserStore } from '../../store'
-import { weeklyProgress } from '../../../../src/lib/weekly-data'
+import { weeklyProgress } from '../../lib/weekly-data'
 
 const calculateCurrentWeek = (dueDate: Date | string): number => {
   if (!dueDate) return 20
