@@ -19,7 +19,7 @@ export default function AiScreen() {
   const [reportText, setReportText] = useState('')
   const [reportResult, setReportResult] = useState<string | null>(null)
   const [reportSending, setReportSending] = useState(false)
-  const listRef = useRef<ScrollView>(null)
+  const listRef = useRef<React.ElementRef<typeof ScrollView>>(null)
 
   useEffect(() => {
     refreshMeta()

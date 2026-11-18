@@ -31,7 +31,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [pregnancyWeek, setPregnancyWeek] = useState('')
   
   const { setUser } = useUserStore()
-  const scrollViewRef = useRef<ScrollView>(null)
+  const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null)
   const fadeAnim = new Animated.Value(1)
 
   // 步骤配置
