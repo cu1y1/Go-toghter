@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '消息不能为空' }, { status: 400 })
     }
 
-    const result = await aiChat(messages)
+    const result = await aiChat(messages, { enableWebSearch: true })
 
     // 落库（记录问答历史，便于后续优化 prompt）
     await prisma.$executeRawUnsafe(
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
       data: {
         content: result.ok ? `${result.content}` : null,
         mode: result.mode,
+        sources: result.sources ?? [],
         quota: { used: rateMap.get(userId)?.count ?? 0, limit: RATE_LIMIT },
       },
       error: result.ok ? undefined : result.error,

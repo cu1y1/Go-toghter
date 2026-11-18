@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   View,
   Text,
@@ -17,6 +17,9 @@ import { COLORS } from '../constants'
 import { Card, Badge, EmptyState } from '../components/common'
 import { SAMPLE_RECIPES, getRecipesByMealType, searchRecipes } from '../constants/recipes'
 import { useFavoriteStore } from '../store'
+import { useAuthStore } from '../store/auth-store'
+import { apiGet, apiPost } from '../services/apiClient'
+import { Alert } from 'react-native'
 import { Recipe, MealType } from '../types'
 
 const { width, height } = Dimensions.get('window')
@@ -36,8 +39,25 @@ export const RecipeScreen: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all')
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
+  const [serverMap, setServerMap] = useState<Map<string, string>>(new Map())
   
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavoriteStore()
+
+  // 拉取服务端食谱，建立 name→id 映射（添加计划时用真实 id）
+  useEffect(() => {
+    let cancelled = false
+    apiGet<{ list: Array<{ id: string; name: string }> }>('/api/recipes?limit=100')
+      .then(res => {
+        if (cancelled || !res.success || !res.data?.list) return
+        const m = new Map<string, string>()
+        res.data.list.forEach(r => m.set(r.name, r.id))
+        setServerMap(m)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // 过滤食谱
   const filteredRecipes = useMemo(() => {
@@ -310,9 +330,42 @@ export const RecipeScreen: React.FC = () => {
 
                 {/* 底部按钮 */}
                 <View style={styles.modalFooter}>
-                  <TouchableOpacity style={styles.addButton}>
+                  <TouchableOpacity
+                    style={[styles.addButton, adding && { opacity: 0.6 }]}
+                    disabled={adding}
+                    onPress={async () => {
+                      if (!selectedRecipe) return
+                      setAdding(true)
+                      const token = useAuthStore.getState().token
+                      if (!token) {
+                        Alert.alert('提示', '请先注册/登录后再添加饮食计划')
+                        setAdding(false)
+                        return
+                      }
+                      try {
+                        const today = new Date()
+                        const planDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                        const res = await apiPost<{ id: string }>('/api/meal-plans', {
+                          recipeId: serverMap.get(selectedRecipe.name) ?? selectedRecipe.id,
+                          mealType: selectedRecipe.mealType === 'snack_morning' || selectedRecipe.mealType === 'snack_afternoon' || selectedRecipe.mealType === 'snack_evening' ? selectedRecipe.mealType : selectedRecipe.mealType,
+                          planDate,
+                        })
+                        if (res.success) {
+                          setAddedIds(prev => new Set(prev).add(selectedRecipe.id))
+                          Alert.alert('成功', `「${selectedRecipe.name}」已加入今日饮食计划`, [
+                            { text: '好的', onPress: () => setModalVisible(false) },
+                          ])
+                        } else {
+                          Alert.alert('添加失败', res.error === '该餐食时间已有计划' ? '今天这一餐已经有计划啦，可在饮食计划页查看' : (res.error ?? '请稍后重试'))
+                        }
+                      } catch {
+                        Alert.alert('网络错误', '请检查网络后重试')
+                      } finally {
+                        setAdding(false)
+                      }
+                    }}>
                     <Ionicons name="add-circle" size={20} color={COLORS.white} />
-                    <Text style={styles.addButtonText}>添加到饮食计划</Text>
+                    <Text style={styles.addButtonText}>{addedIds.has(selectedRecipe?.id ?? '') ? '已加入今日计划' : adding ? '添加中…' : '添加到饮食计划'}</Text>
                   </TouchableOpacity>
                 </View>
               </>

@@ -8,7 +8,9 @@ import {
   Dimensions,
   ScrollView,
   Animated,
+  Platform,
 } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
@@ -28,6 +30,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [dueDate, setDueDate] = useState<Date | null>(null)
   const [pregnancyStage, setPregnancyStage] = useState<string | null>(null)
   const [knowPregnancyWeek, setKnowPregnancyWeek] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [pregnancyWeek, setPregnancyWeek] = useState('')
   
   const { setUser } = useUserStore()
@@ -220,13 +223,27 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
       <TouchableOpacity 
         style={styles.datePickerButton}
-        onPress={() => {/* TODO: 日期选择器 */}}
+        onPress={() => setShowDatePicker(true)}
       >
         <Ionicons name="calendar-outline" size={24} color={COLORS.primary} />
         <Text style={styles.datePickerText}>
           {dueDate ? `${dueDate.getFullYear()}年${dueDate.getMonth() + 1}月${dueDate.getDate()}日` : '点击选择预产期'}
         </Text>
       </TouchableOpacity>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={dueDate ?? new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={new Date()}
+          maximumDate={new Date(Date.now() + 365 * 24 * 3600 * 1000)}
+          onChange={(_e, d) => {
+            if (Platform.OS === 'android') setShowDatePicker(false)
+            if (d) setDueDate(d)
+          }}
+        />
+      )}
 
       <TouchableOpacity 
         style={styles.alternativeButton}

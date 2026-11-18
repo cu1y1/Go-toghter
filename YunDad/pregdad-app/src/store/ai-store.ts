@@ -4,6 +4,7 @@ import { apiGet, apiPost } from '../services/apiClient'
 export interface ChatMsg {
   role: 'user' | 'assistant'
   content: string
+  sources?: Array<{ title: string; link: string; media?: string; publish_date?: string }>
 }
 
 interface AiState {
@@ -39,13 +40,13 @@ export const useAiStore = create<AiState>((set, get) => ({
     const history = [...get().messages, { role: 'user' as const, content: trimmed }]
     set({ messages: history, sending: true })
     try {
-      const res = await apiPost<{ content: string | null; mode: 'mock' | 'glm'; quota: { used: number; limit: number } }>(
+      const res = await apiPost<{ content: string | null; mode: 'mock' | 'glm'; sources?: Array<{ title: string; link: string }>; quota: { used: number; limit: number } }>(
         '/api/ai/chat',
         { messages: history.slice(-10).map((m) => ({ role: m.role, content: m.content })) }
       )
       if (res.success && res.data?.content) {
         set({
-          messages: [...history, { role: 'assistant', content: res.data.content }],
+          messages: [...history, { role: 'assistant', content: res.data.content, sources: res.data.sources }],
           sending: false,
           mode: res.data.mode,
           quotaUsed: res.data.quota.used,

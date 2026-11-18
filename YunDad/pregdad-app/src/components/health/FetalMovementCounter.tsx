@@ -5,7 +5,7 @@ import { apiGet, apiPost } from '../../services/apiClient'
 interface FetalMovement {
   id: string
   userId: string
-  count: number
+  movements: number
   duration: number
   notes: string
   createdAt: string
@@ -34,7 +34,7 @@ export function FetalMovementCounter({ userId }: FetalMovementCounterProps) {
         const todayMovements = data.data.filter(
           (m: FetalMovement) => new Date(m.createdAt).toDateString() === today
         )
-        setTodayTotal(todayMovements.reduce((sum: number, m: FetalMovement) => sum + m.count, 0))
+        setTodayTotal(todayMovements.reduce((sum: number, m: FetalMovement) => sum + m.movements, 0))
       })
     return () => { cancelled = true }
   }, [])
@@ -68,7 +68,7 @@ export function FetalMovementCounter({ userId }: FetalMovementCounterProps) {
 
     try {
       const data = await apiPost<FetalMovement>('/api/fetal-movements', {
-        count,
+        movements: count,
         duration: Math.ceil(elapsedTime / 60),
         notes: '',
       })
@@ -146,7 +146,7 @@ export function FetalMovementCounter({ userId }: FetalMovementCounterProps) {
             {history.slice(0, 5).map((item) => (
               <View key={item.id} style={styles.historyItem}>
                 <View>
-                  <Text style={styles.historyCount}>{item.count} 次</Text>
+                  <Text style={styles.historyCount}>{item.movements} 次</Text>
                   <Text style={styles.historyDuration}>{item.duration} 分钟</Text>
                 </View>
                 <View style={styles.historyDateBadge}>

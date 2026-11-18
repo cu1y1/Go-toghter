@@ -14,6 +14,7 @@ export interface AiResult {
   content: string
   mode: AiMode
   usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number }
+  sources?: Array<{ title: string; link: string; media?: string; publish_date?: string }>
   error?: string
 }
 
@@ -40,8 +41,8 @@ function mockChat(messages: AiChatMessage[]): AiResult {
   return { ok: true, content, mode: 'mock' }
 }
 
-// 调用 GLM（OpenAI 兼容协议）
-async function glmChat(messages: AiChatMessage[], maxTokens: number): Promise<AiResult> {
+// 调用 GLM（OpenAI 兼容协议）；enableWebSearch 时启用智谱内置 web_search 工具（免费可用）
+async function glmChat(messages: AiChatMessage[], maxTokens: number, enableWebSearch = false): Promise<AiResult> {
   const key = process.env.AI_API_KEY
   if (!key) return { ok: false, content: '', mode: 'mock', error: 'AI_API_KEY 未配置' }
   try {
@@ -56,6 +57,10 @@ async function glmChat(messages: AiChatMessage[], maxTokens: number): Promise<Ai
     // glm-5.* 始终思考模型：必须显式传 thinking，否则报 1210；effort=low 控制成本
     if (GLM_THINKING_EFFORT !== 'off' && /^glm-5\./.test(GLM_MODEL)) {
       body.thinking = { type: 'enabled', clear_thinking: false, effort: GLM_THINKING_EFFORT }
+    }
+    // 联网搜索：智谱内置 web_search 工具，返回带来源链接的实时信息
+    if (enableWebSearch) {
+      body.tools = [{ type: 'web_search', web_search: { enable: true, search_result: true } }]
     }
     const res = await fetch(GLM_API_URL, {
       method: 'POST',
@@ -73,11 +78,18 @@ async function glmChat(messages: AiChatMessage[], maxTokens: number): Promise<Ai
     const json = await res.json()
     const content = json?.choices?.[0]?.message?.content
     if (!content) return { ok: false, content: '', mode: 'glm', error: 'GLM 返回为空' }
+    // 提取 web_search 引用来源（title/link/media/publish_date）
+    const rawSources: Array<Record<string, string>> = Array.isArray(json?.web_search) ? json.web_search : []
+    const sources = rawSources
+      .filter(s => s && (s.link || s.url))
+      .slice(0, 5)
+      .map(s => ({ title: (s.title || '来源').slice(0, 60), link: s.link || s.url, media: s.media || undefined, publish_date: s.publish_date || undefined }))
     return {
       ok: true,
       content,
       mode: 'glm',
       usage: json?.usage,
+      sources: sources.length ? sources : undefined,
     }
   } catch (error) {
     return { ok: false, content: '', mode: 'glm', error: error instanceof Error ? error.message : 'AI 调用失败' }
@@ -95,7 +107,7 @@ const YUNDAD_SYSTEM_PROMPT = `你是"孕爸爸"App 的 AI 助手，服务对象�
 
 export async function aiChat(
   messages: AiChatMessage[],
-  options: { maxTokens?: number; systemPrompt?: string } = {}
+  options: { maxTokens?: number; systemPrompt?: string; enableWebSearch?: boolean } = {}
 ): Promise<AiResult> {
   const mode = getAiMode()
   const full: AiChatMessage[] = [
@@ -103,7 +115,7 @@ export async function aiChat(
     ...messages.slice(-10), // 上下文最多10条，控制免费档token
   ]
   if (mode === 'mock') return mockChat(messages)
-  return glmChat(full, options.maxTokens ?? 1024)
+  return glmChat(full, options.maxTokens ?? 1024, options.enableWebSearch ?? false)
 }
 
 // 产检单解读专用 prompt（结构化输出）

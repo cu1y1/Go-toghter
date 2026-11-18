@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants'
 import { useAiStore } from '../store/ai-store'
@@ -79,6 +79,18 @@ export default function AiScreen() {
         {messages.map((m, i) => (
           <View key={i} style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAi]}>
             <Text style={m.role === 'user' ? styles.msgUser : styles.msgAi}>{m.content}</Text>
+            {m.role === 'assistant' && !!m.sources?.length && (
+              <View style={styles.sourcesBox}>
+                <Text style={styles.sourcesTitle}>参考来源（点击查看原文）</Text>
+                {m.sources.slice(0, 3).map((s, si) => (
+                  <TouchableOpacity key={si} onPress={() => Linking.openURL(s.link).catch(() => {})}>
+                    <Text style={styles.sourceLink} numberOfLines={1}>
+                      [{si + 1}] {s.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         ))}
         {sending && (
@@ -154,6 +166,9 @@ const styles = StyleSheet.create({
   bubbleAi: { alignSelf: 'flex-start', backgroundColor: COLORS.white },
   msgUser: { color: COLORS.white, fontSize: 14, lineHeight: 20 },
   msgAi: { color: COLORS.text, fontSize: 14, lineHeight: 20 },
+  sourcesBox: { marginTop: 8, paddingTop: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e5e7eb' },
+  sourcesTitle: { color: COLORS.textMuted, fontSize: 11, marginBottom: 2 },
+  sourceLink: { color: COLORS.primary, fontSize: 12, lineHeight: 18 },
   reportEntry: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border },
   reportEntryText: { fontSize: 13, color: COLORS.primary, marginLeft: 6 },
   reportBox: { backgroundColor: COLORS.white, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
