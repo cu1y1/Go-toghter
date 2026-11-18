@@ -100,3 +100,10 @@
 
 ### 教训
 - 服务器 3.5G 内存，OpenClaw 网关占 2G：standalone 无内存限制裸跑会被 OOM 秒杀；用 systemd MemoryMax+小堆规避
+
+## 2026-11-18（晚）· Expo 58 升级收尾 tsc 全净
+### 修复
+- ScrollView ref 类型不适配 RN 0.83 新类型（AiScreen/Onboarding 两处）：改用 React.ElementRef<typeof ScrollView>
+- tsconfig.json 增加 exclude src.bak-upgrade（升级备份目录混入编译）
+### 状态
+- App 全量 tsc 0 错误（/tmp/app-tsc9.log）；commit 9abf7f6 已推，master 已快进同步
