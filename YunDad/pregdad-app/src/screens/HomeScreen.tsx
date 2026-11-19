@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
 import { useUserStore } from '../store'
 import { COLORS, MEAL_TYPES } from '../constants'
 import { Card, Badge, ProgressBar } from '../components/common'
@@ -22,6 +23,7 @@ const { width } = Dimensions.get('window')
 
 export const HomeScreen: React.FC = () => {
   const { user } = useUserStore()
+  const navigation = useNavigation<any>()
   const [todayPoints, setTodayPoints] = useState(0)
   const [mealStatus, setMealStatus] = useState<Record<string, boolean>>({
     breakfast: false,
@@ -185,6 +187,26 @@ export const HomeScreen: React.FC = () => {
               progress={Object.values(mealStatus).filter(Boolean).length / 6 * 100} 
               height={6}
             />
+          </View>
+        </View>
+
+        {/* 快捷入口（原独立Tab收编：AI助手/待产包） */}
+        <View style={styles.section}>
+          <View style={styles.quickRow}>
+            <TouchableOpacity style={styles.quickCard} activeOpacity={0.85} onPress={() => navigation.navigate('Ai')}>
+              <View style={[styles.quickIconBox, { backgroundColor: '#8B5CF615' }]}>
+                <Ionicons name="sparkles" size={22} color="#8B5CF6" />
+              </View>
+              <Text style={styles.quickTitle}>AI 孕产助手</Text>
+              <Text style={styles.quickSub} numberOfLines={1}>联网搜索 · 产检单解读</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickCard} activeOpacity={0.85} onPress={() => navigation.navigate('BabyBag')}>
+              <View style={[styles.quickIconBox, { backgroundColor: COLORS.primary + '15' }]}>
+                <Ionicons name="bag-check" size={22} color={COLORS.primary} />
+              </View>
+              <Text style={styles.quickTitle}>待产包</Text>
+              <Text style={styles.quickSub} numberOfLines={1}>照单准备 · 一项不落</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -441,4 +463,12 @@ const styles = StyleSheet.create({
   tipsScroll: {
     paddingRight: 16,
   },
+  quickRow: { flexDirection: 'row', gap: 12 },
+  quickCard: { flex: 1, backgroundColor: COLORS.white, borderRadius: 16, padding: 16 },
+  quickIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  quickTitle: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  quickSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+
 })
+
+// 快捷入口样式（追加）

@@ -1,620 +1,252 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS, BABY_BAG_CATEGORIES } from '../constants'
-import { Card, ProgressBar } from '../components/common'
+import { COLORS } from '../constants'
+import { Card } from '../components/common'
 import { useBabyBagStore } from '../store/babybag-store'
-import { useUserStore } from '../store'
+import { useAuthStore } from '../store/auth-store'
 
+/**
+ * 待产包页（Tab 收编版）
+ * - 顶部显示整体准备进度
+ * - 饮食计划 Tab 布局思路：分类横向切换 + 该分类物品列表
+ * - 二期入口预留：AI 智能推荐 / 一键采购清单（CPS 分佣）
+ */
 export const BabyBagScreen: React.FC = () => {
-  const { 
-    loading, 
-    error, 
-    expandedCategories, 
-    getBabyBagItems, 
-    addItem, 
-    deleteItem, 
-    toggleItem, 
-    toggleCategory, 
-    getItemsByCategory, 
-    getCategoryProgress, 
-    getTotalProgress 
+  const userId = useAuthStore((s) => s.user?.id)
+  const {
+    categories,
+    items,
+    stats,
+    loading,
+    error,
+    getBabyBagItems,
+    toggleItem,
+    addItem,
+    deleteItem,
   } = useBabyBagStore()
-  
-  const { user, isLoggedIn } = useUserStore()
-  
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newItemName, setNewItemName] = useState('')
-  const [newItemCategory, setNewItemCategory] = useState('mom')
+  const [activeCat, setActiveCat] = useState<string | null>(null)
 
-  const progress = getTotalProgress()
-  const progressPercent = progress.total > 0 ? progress.progress : 0
+  React.useEffect(() => {
+    getBabyBagItems()
+  }, [getBabyBagItems])
 
-  // 获取待产包物品数据
-  useEffect(() => {
-    if (isLoggedIn) {
-      getBabyBagItems()
-    }
-  }, [getBabyBagItems, isLoggedIn])
+  const currentCat = activeCat ?? categories[0]?.id ?? null
+  const currentItems = currentCat ? items.filter((i) => i.categoryId === currentCat) : []
 
-  // 添加自定义物品
-  const handleAddItem = useCallback(() => {
-    if (!newItemName.trim()) {
-      Alert.alert('提示', '请输入物品名称')
-      return
-    }
-
-    if (!isLoggedIn || !user?.id) {
-      Alert.alert('提示', '请先登录')
-      return
-    }
-
-    addItem(undefined, newItemCategory, newItemName.trim())
-      .then((success) => {
-        if (success) {
-          setNewItemName('')
-          setShowAddForm(false)
-          Alert.alert('成功', '物品已添加')
-        } else {
-          Alert.alert('失败', '添加物品失败，请稍后重试')
-        }
-      })
-  }, [newItemName, newItemCategory, addItem, isLoggedIn, user?.id])
-
-  // 删除物品
-  const handleRemoveItem = useCallback((itemId: string) => {
-    if (!isLoggedIn || !user?.id) {
-      Alert.alert('提示', '请先登录')
-      return
-    }
-
-    Alert.alert(
-      '确认删除',
-      '确定要删除这个物品吗？',
-      [
-        { text: '取消', style: 'cancel' },
-        { 
-          text: '删除', 
-          style: 'destructive',
-          onPress: () => {
-            deleteItem(undefined, itemId)
-              .then((success) => {
-                if (!success) {
-                  Alert.alert('失败', '删除物品失败，请稍后重试')
-                }
-              })
-          }
-        }
-      ]
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>正在加载待产包…</Text>
+      </View>
     )
-  }, [deleteItem, isLoggedIn, user?.id])
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Ionicons name="cloud-offline" size={40} color={COLORS.textMuted} />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => getBabyBagItems()}>
+          <Text style={styles.retryText}>重试</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 标题 */}
-        <View style={styles.header}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="bag-check" size={24} color={COLORS.white} />
-          </View>
-          <Text style={styles.title}>待产包清单</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>待产包</Text>
+        <Text style={styles.subtitle}>宝宝出生前的物资清单，一项项准备</Text>
 
-        {/* 进度卡片 */}
-        <Card style={styles.progressCard}>
-          <View style={styles.progressTop}>
-            <Text style={styles.progressLabel}>准备进度</Text>
+        {/* 总进度 */}
+        <View style={styles.progressCard}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressTitle}>准备进度</Text>
             <Text style={styles.progressValue}>
-              {progress.prepared}/{progress.total} 件
+              {stats.prepared}/{stats.total}
             </Text>
           </View>
-          <ProgressBar progress={progressPercent} height={10} />
-          <Text style={styles.progressHint}>
-            {progressPercent === 100 
-              ? '🎉 太棒了！待产包已准备完毕' 
-              : `还需准备 ${progress.total - progress.prepared} 件物品`
-            }
-          </Text>
-        </Card>
-
-        {/* 加载状态 */}
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>加载中...</Text>
-          </View>
-        )}
-
-        {/* 错误提示 */}
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton}
-              onPress={() => user?.id && getBabyBagItems()}
-            >
-              <Text style={styles.retryButtonText}>重试</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* 添加物品按钮 */}
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => setShowAddForm(true)}
-        >
-          <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.addButtonText}>添加自定义物品</Text>
-        </TouchableOpacity>
-
-        {/* 添加物品表单 */}
-        {showAddForm && (
-          <Card style={styles.addForm}>
-            <Text style={styles.formTitle}>添加物品</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="输入物品名称"
-              value={newItemName}
-              onChangeText={setNewItemName}
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${stats.total ? Math.round((stats.prepared / stats.total) * 100) : 0}%` },
+              ]}
             />
-            <Text style={styles.formLabel}>选择分类</Text>
-            <View style={styles.categoryChips}>
-              {BABY_BAG_CATEGORIES.map(cat => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryChip,
-                    newItemCategory === cat.id && styles.categoryChipActive
-                  ]}
-                  onPress={() => setNewItemCategory(cat.id)}
-                >
-                  <Text style={styles.categoryChipIcon}>{cat.icon}</Text>
-                  <Text style={[
-                    styles.categoryChipText,
-                    newItemCategory === cat.id && styles.categoryChipTextActive
-                  ]}>
-                    {cat.name}
+          </View>
+        </View>
+
+        {/* 二期功能入口（占位，开发前不误导用户） */}
+        <View style={styles.soonRow}>
+          <View style={[styles.soonCard, styles.soonDisabled]}>
+            <Ionicons name="sparkles" size={18} color={COLORS.textMuted} />
+            <Text style={styles.soonText}>AI 智能推荐 · 即将上线</Text>
+          </View>
+          <View style={[styles.soonCard, styles.soonDisabled]}>
+            <Ionicons name="cart" size={18} color={COLORS.textMuted} />
+            <Text style={styles.soonText}>一键采购清单 · 即将上线</Text>
+          </View>
+        </View>
+
+        {/* 分类横向切换 */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catRow}>
+          {categories.map((c) => (
+            <TouchableOpacity
+              key={c.id}
+              style={[styles.catBtn, currentCat === c.id && styles.catBtnActive]}
+              onPress={() => setActiveCat(c.id)}
+            >
+              <Text style={[styles.catText, currentCat === c.id && styles.catTextActive]}>
+                {c.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* 当前分类物品 */}
+        {currentItems.map((item) => (
+          <Card key={item.id} style={styles.itemCard}>
+            <TouchableOpacity
+              style={styles.itemRow}
+              onPress={() => toggleItem(userId, item.id)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, item.isPrepared && styles.checkboxActive]}>
+                {item.isPrepared && <Ionicons name="checkmark" size={16} color={COLORS.white} />}
+              </View>
+              <View style={styles.itemInfo}>
+                <Text style={[styles.itemName, item.isPrepared && styles.itemNamePacked]}>
+                  {item.name}
+                </Text>
+                {!!item.description && (
+                  <Text style={styles.itemDesc} numberOfLines={1}>
+                    {item.description}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.formButtons}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => {
-                  setShowAddForm(false)
-                  setNewItemName('')
-                }}
-              >
-                <Text style={styles.cancelButtonText}>取消</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.confirmButton}
-                onPress={handleAddItem}
-              >
-                <Text style={styles.confirmButtonText}>添加</Text>
-              </TouchableOpacity>
-            </View>
-          </Card>
-        )}
-
-        {/* 分类列表 */}
-        {BABY_BAG_CATEGORIES.map(category => {
-          const categoryItems = getItemsByCategory(category.id)
-          const catProgress = getCategoryProgress(category.id)
-          const isExpanded = expandedCategories.includes(category.id)
-          const isComplete = catProgress.prepared === catProgress.total && catProgress.total > 0
-
-          if (categoryItems.length === 0) return null
-
-          return (
-            <View key={category.id} style={styles.categorySection}>
+                )}
+              </View>
               <TouchableOpacity
-                style={[
-                  styles.categoryHeader,
-                  isComplete && styles.categoryHeaderComplete
-                ]}
-                onPress={() => toggleCategory(category.id)}
-                activeOpacity={0.8}
+                onPress={() => deleteItem(userId, item.id)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <View style={styles.categoryHeaderLeft}>
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                  <Text style={styles.categoryProgress}>
-                    {catProgress.prepared}/{catProgress.total}
-                  </Text>
-                </View>
-                <View style={styles.categoryHeaderRight}>
-                  {isComplete && (
-                    <View style={styles.completeBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-                      <Text style={styles.completeText}>已完成</Text>
-                    </View>
-                  )}
-                  <Ionicons 
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                    size={20} 
-                    color={COLORS.textLight} 
-                  />
-                </View>
+                <Ionicons name="trash-outline" size={18} color={COLORS.textMuted} />
               </TouchableOpacity>
+            </TouchableOpacity>
+          </Card>
+        ))}
 
-              {isExpanded && (
-                <View style={styles.itemList}>
-                  {categoryItems.map(item => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.itemRow,
-                        item.isPrepared && styles.itemRowPrepared
-                      ]}
-                      onPress={() => {
-                        if (isLoggedIn && user?.id) {
-                          toggleItem(undefined, item.id)
-                        }
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.checkboxContainer}>
-                        <Ionicons 
-                          name={item.isPrepared ? 'checkbox' : 'square-outline'} 
-                          size={22} 
-                          color={item.isPrepared ? COLORS.success : COLORS.textMuted} 
-                        />
-                      </View>
-                      <Text style={[
-                        styles.itemName,
-                        item.isPrepared && styles.itemNamePrepared
-                      ]}>
-                        {item.name}
-                      </Text>
-                      {!item.isDefault && (
-                        <TouchableOpacity
-                          onPress={() => handleRemoveItem(item.id)}
-                          style={styles.deleteButton}
-                        >
-                          <Ionicons name="trash-outline" size={16} color={COLORS.error} />
-                        </TouchableOpacity>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-          )
-        })}
-
-        {/* 知识入口 */}
-        <Card style={styles.knowledgeCard}>
-          <Text style={styles.knowledgeTitle}>💡 相关知识</Text>
-          <TouchableOpacity style={styles.knowledgeItem}>
-            <Ionicons name="warning" size={18} color={COLORS.error} />
-            <Text style={styles.knowledgeItemText}>孕期饮食禁忌</Text>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.knowledgeItem}>
-            <Ionicons name="calendar" size={18} color={COLORS.primary} />
-            <Text style={styles.knowledgeItemText}>产检时间表</Text>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.knowledgeItem}>
-            <Ionicons name="book" size={18} color={COLORS.success} />
-            <Text style={styles.knowledgeItemText}>孕期注意事项</Text>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </Card>
-
-        <View style={{ height: 100 }} />
+        {currentItems.length === 0 && (
+          <Text style={styles.emptyText}>该分类还没有物品</Text>
+        )}
       </ScrollView>
+
+      {/* 添加物品 */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => {
+          // 简易添加：后续迭代为表单弹层
+          addItem(userId, currentCat ?? '', '新物品', '')
+        }}
+      >
+        <Ionicons name="add" size={28} color={COLORS.white} />
+      </TouchableOpacity>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  container: { flex: 1, backgroundColor: COLORS.background },
+  center: { justifyContent: 'center', alignItems: 'center' },
+  content: { padding: 16, paddingBottom: 100 },
+  title: { fontSize: 24, fontWeight: '700', color: COLORS.text },
+  subtitle: { fontSize: 13, color: COLORS.textMuted, marginTop: 4, marginBottom: 16 },
+  loadingText: { color: COLORS.textMuted, marginTop: 12 },
+  errorText: { color: COLORS.textMuted, marginTop: 12, marginBottom: 16 },
+  retryBtn: {
     backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
+  retryText: { color: COLORS.white, fontWeight: '600' },
   progressCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
   },
-  progressTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  progressLabel: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  progressValue: {
-    fontSize: 16,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  progressHint: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  addButton: {
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  progressTitle: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  progressValue: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
+  progressBar: { height: 8, backgroundColor: COLORS.border, borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: 8, backgroundColor: COLORS.primary, borderRadius: 4 },
+  soonRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  soonCard: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
     backgroundColor: COLORS.white,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 14,
     borderRadius: 12,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.border,
     borderStyle: 'dashed',
   },
-  addButtonText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  addForm: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-  },
-  formTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
+  soonDisabled: { opacity: 0.6 },
+  soonText: { fontSize: 12, color: COLORS.textMuted },
+  catRow: { marginBottom: 12 },
+  catBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  formLabel: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginBottom: 8,
-  },
-  categoryChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: COLORS.background,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  categoryChipActive: {
-    backgroundColor: COLORS.primary,
-  },
-  categoryChipIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  categoryChipText: {
-    fontSize: 13,
-    color: COLORS.text,
-  },
-  categoryChipTextActive: {
-    color: COLORS.white,
-  },
-  formButtons: {
-    flexDirection: 'row',
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: COLORS.background,
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  cancelButtonText: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    fontWeight: '500',
-  },
-  confirmButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    fontSize: 14,
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  categorySection: {
-    marginBottom: 12,
-    marginHorizontal: 16,
+    borderRadius: 18,
     backgroundColor: COLORS.white,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: COLORS.white,
-  },
-  categoryHeaderComplete: {
-    backgroundColor: COLORS.success + '10',
-  },
-  categoryHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  categoryIcon: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  categoryName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  categoryProgress: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginLeft: 8,
-  },
-  categoryHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  completeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginRight: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  completeText: {
-    fontSize: 12,
-    color: COLORS.success,
-    marginLeft: 4,
-  },
-  itemList: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingHorizontal: 16,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  itemRowPrepared: {
-    backgroundColor: COLORS.success + '5',
-  },
-  checkboxContainer: {
+  catBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  catText: { fontSize: 13, color: COLORS.text },
+  catTextActive: { color: COLORS.white, fontWeight: '600' },
+  itemCard: { marginBottom: 8 },
+  itemRow: { flexDirection: 'row', alignItems: 'center' },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: COLORS.border,
     marginRight: 12,
-  },
-  itemName: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  itemNamePrepared: {
-    textDecorationLine: 'line-through',
-    color: COLORS.textLight,
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  loadingContainer: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  loadingText: {
-    fontSize: 14,
-    color: COLORS.textLight,
-  },
-  errorContainer: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: COLORS.error + '10',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 14,
-    color: COLORS.error,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  retryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  checkboxActive: { backgroundColor: COLORS.success, borderColor: COLORS.success },
+  itemInfo: { flex: 1 },
+  itemName: { fontSize: 15, color: COLORS.text, fontWeight: '500' },
+  itemNamePacked: { color: COLORS.textMuted, textDecorationLine: 'line-through' },
+  itemDesc: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  emptyText: { textAlign: 'center', color: COLORS.textMuted, marginTop: 24 },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: COLORS.primary,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    fontSize: 14,
-    color: COLORS.white,
-    fontWeight: '500',
-  },
-  knowledgeCard: {
-    marginHorizontal: 16,
-    marginTop: 8,
-  },
-  knowledgeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  knowledgeItem: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  knowledgeItemText: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.text,
-    marginLeft: 10,
+    justifyContent: 'center',
   },
 })

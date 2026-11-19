@@ -14,13 +14,23 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants'
 import { Card, ProgressBar } from '../components/common'
 import { useUserStore, useFavoriteStore } from '../store'
+import { useAuthStore } from '../store/auth-store'
+import { useBabyBagStore } from '../store/babybag-store'
 import { getLevelByPoints } from '../utils'
+import { PartnerPanel } from '../components/partner/PartnerPanel'
 
 const APP_VERSION = '1.0.0'
 
+/**
+ * 「我的」页（五页签版）
+ * - 原独立「家庭」Tab 的绑定功能收编为 PartnerPanel 区块
+ * - 待产包入口（Tab 已瘦身移除，从页签改入口卡）
+ */
 export const ProfileScreen: React.FC = () => {
   const { user, logout, updateUser } = useUserStore()
   const { favorites } = useFavoriteStore()
+  const babybag = useBabyBagStore()
+  const authUser = useAuthStore((s) => s.user)
   const [darkMode, setDarkMode] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
@@ -39,8 +49,8 @@ export const ProfileScreen: React.FC = () => {
   // 格式化预产期
   const formatDueDate = (date: Date) => {
     const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
+    const month = date.getMonth() + 1
+    const day = date.getDate()
     return `${year}年${month}月${day}日`
   }
 
@@ -107,55 +117,53 @@ export const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* 用户卡片 */}
-        <Card style={styles.userCard}>
-          <View style={styles.userTop}>
-            <TouchableOpacity style={styles.avatarContainer}>
-              {userInfo.avatar ? (
-                <Image source={{ uri: userInfo.avatar }} style={styles.avatar} accessibilityLabel="用户头像" />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={32} color={COLORS.white} />
-                </View>
-              )}
-              <View style={styles.avatarBadge}>
-                <Ionicons name="camera" size={12} color={COLORS.white} />
+        <View style={styles.userCard}>
+          <TouchableOpacity style={styles.avatarContainer}>
+            {userInfo.avatar ? (
+              <Image source={{ uri: userInfo.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Ionicons name="person" size={32} color={COLORS.white} />
               </View>
-            </TouchableOpacity>
-            
-            <View style={styles.userInfo}>
-              <Text style={styles.babyName}>{userInfo.babyName}</Text>
-              <View style={styles.levelBadge}>
-                <Text style={styles.levelText}>Lv.{levelInfo.level} {levelInfo.name}</Text>
-              </View>
-              <Text style={styles.pointsText}>积分: {userInfo.points}</Text>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.babyName}>{userInfo.babyName}的爸爸</Text>
+          <Text style={styles.dueDate}>预产期：{formatDueDate(userInfo.dueDate)}</Text>
+
+          {/* 等级与进度 */}
+          <View style={styles.levelSection}>
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelText}>Lv.{userInfo.level}</Text>
+            </View>
+            <View style={styles.levelProgressBox}>
+              <ProgressBar progress={levelInfo.progress} color={COLORS.white} height={6} />
+              <Text style={styles.levelPoints}>{userInfo.points} 积分</Text>
             </View>
           </View>
+        </View>
 
-          <View style={styles.userStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>孕{userInfo.pregnancyWeek}周</Text>
-              <Text style={styles.statLabel}>当前孕周</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{formatDueDate(userInfo.dueDate)}</Text>
-              <Text style={styles.statLabel}>预产期</Text>
-            </View>
+        {/* 家庭绑定（原独立Tab收编） */}
+        <PartnerPanel />
+
+        {/* 待产包入口（原独立Tab收编） */}
+        <TouchableOpacity
+          style={styles.babybagEntry}
+          activeOpacity={0.85}
+          onPress={() => Alert.alert('待产包', '待产包已移至「首页」快捷入口，即将以新交互回归')}
+        >
+          <View style={styles.babybagIconBox}>
+            <Ionicons name="bag-check" size={22} color={COLORS.primary} />
           </View>
-
-          <View style={styles.levelProgress}>
-            <Text style={styles.levelProgressText}>
-              再获得 {levelInfo.pointsToNext} 积分升级
+          <View style={styles.babybagInfo}>
+            <Text style={styles.babybagTitle}>待产包</Text>
+            <Text style={styles.babybagSub}>
+              已备 {babybag.stats.prepared}/{babybag.stats.total} 项 · 点此查看清单
             </Text>
-            <ProgressBar progress={levelInfo.progress} height={4} />
           </View>
-        </Card>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+        </TouchableOpacity>
 
         {/* 功能菜单 */}
         <View style={styles.menuSection}>
@@ -170,26 +178,20 @@ export const ProfileScreen: React.FC = () => {
                 <Ionicons name={item.icon as any} size={20} color={item.color} />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
-              {item.badge !== undefined && item.badge > 0 && (
+              {!!item.badge && item.badge > 0 && (
                 <View style={styles.menuBadge}>
                   <Text style={styles.menuBadgeText}>{item.badge}</Text>
                 </View>
               )}
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* 设置菜单 */}
+        {/* 设置 */}
         <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>设置</Text>
           {settingItems.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.menuItem}
-              onPress={() => !item.hasSwitch && handleMenuPress(item.id)}
-              activeOpacity={item.hasSwitch ? 1 : 0.7}
-            >
+            <View key={item.id} style={styles.menuItem}>
               <View style={[styles.menuIconContainer, { backgroundColor: item.color + '15' }]}>
                 <Ionicons name={item.icon as any} size={20} color={item.color} />
               </View>
@@ -197,228 +199,118 @@ export const ProfileScreen: React.FC = () => {
               {item.hasSwitch ? (
                 <Switch
                   value={darkMode}
-                  onValueChange={(value) => {
-                    setDarkMode(value)
-                    Alert.alert(value ? '深色模式已开启' : '深色模式已关闭')
-                  }}
-                  trackColor={{ false: COLORS.border, true: COLORS.primary + '50' }}
-                  thumbColor={darkMode ? COLORS.primary : '#f4f3f4'}
+                  onValueChange={setDarkMode}
+                  trackColor={{ true: COLORS.primary, false: COLORS.border }}
                 />
               ) : (
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+                <TouchableOpacity onPress={() => handleMenuPress(item.id)}>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
 
         {/* 退出登录 */}
-        <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={18} color={COLORS.error} />
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={styles.logoutText}>退出登录</Text>
         </TouchableOpacity>
 
-        {/* 版本信息 */}
-        <View style={styles.versionInfo}>
-          <Text style={styles.versionText}>孕爸爸 v{APP_VERSION}</Text>
-          <Text style={styles.copyrightText}>
-            © {new Date().getFullYear()} 孕爸爸 All Rights Reserved
-          </Text>
-        </View>
-
-        <View style={{ height: 100 }} />
+        <Text style={styles.versionText}>孕爸爸 v{APP_VERSION}</Text>
       </ScrollView>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { padding: 16, paddingBottom: 40 },
   userCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
     marginBottom: 16,
-    padding: 20,
   },
-  userTop: {
+  avatarContainer: { marginBottom: 12 },
+  avatar: { width: 72, height: 72, borderRadius: 36 },
+  avatarPlaceholder: { backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  babyName: { fontSize: 20, fontWeight: '700', color: COLORS.white },
+  dueDate: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+  levelSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-  },
-  avatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: COLORS.textLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.white,
-  },
-  userInfo: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  babyName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 6,
+    marginTop: 16,
+    width: '100%',
+    gap: 12,
   },
   levelBadge: {
-    backgroundColor: COLORS.primary + '15',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
-  levelText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  pointsText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-  },
-  userStats: {
+  levelText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
+  levelProgressBox: { flex: 1 },
+  levelPoints: { color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 4, textAlign: 'right' },
+  babybagEntry: {
     flexDirection: 'row',
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 14,
-  },
-  statItem: {
-    flex: 1,
     alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: COLORS.textLight,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: COLORS.border,
-  },
-  levelProgress: {
-  },
-  levelProgressText: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    marginBottom: 6,
-  },
-  menuSection: {
-    marginHorizontal: 16,
-    marginBottom: 16,
     backgroundColor: COLORS.white,
     borderRadius: 16,
-    overflow: 'hidden',
+    padding: 16,
+    marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    fontWeight: '500',
-    padding: 14,
-    paddingBottom: 8,
+  babybagIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  babybagInfo: { flex: 1 },
+  babybagTitle: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  babybagSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  menuSection: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingVertical: 14,
   },
   menuIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
-  menuLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
+  menuLabel: { flex: 1, fontSize: 15, color: COLORS.text },
   menuBadge: {
     backgroundColor: COLORS.primary,
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    paddingHorizontal: 6,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
     marginRight: 8,
   },
-  menuBadgeText: {
-    fontSize: 11,
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    padding: 14,
-    borderRadius: 12,
+  menuBadgeText: { color: COLORS.white, fontSize: 11, fontWeight: '600' },
+  logoutBtn: {
     backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.error + '30',
-  },
-  logoutText: {
-    fontSize: 15,
-    color: COLORS.error,
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  versionInfo: {
+    borderRadius: 16,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 24,
+    marginBottom: 12,
   },
-  versionText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-  copyrightText: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    marginTop: 4,
-  },
+  logoutText: { color: '#EF4444', fontWeight: '600', fontSize: 15 },
+  versionText: { textAlign: 'center', color: COLORS.textMuted, fontSize: 12 },
 })

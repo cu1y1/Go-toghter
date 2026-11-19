@@ -32,6 +32,7 @@ const MainTabs = () => {
         tabBarItemStyle: styles.tabBarItem,
       }}
     >
+      {/* 五页签：首页/食谱/打卡/健康/我的；AI助手、待产包、家庭绑定从首页/我的页入口进入，降低导航冗余 */}
       <Tab.Screen
         name="Home"
         component={HomeScreen}
@@ -63,42 +64,12 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name="BabyBag"
-        component={BabyBagScreen}
-        options={{
-          tabBarLabel: '待产包',
-          tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="bag-check" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Health"
         component={HealthScreen}
         options={{
           tabBarLabel: '健康',
           tabBarIcon: ({ color, size }) => (
             <TabBarIcon name="heart" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Ai"
-        component={AiScreen}
-        options={{
-          tabBarLabel: 'AI助手',
-          tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="sparkles" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Partner"
-        component={PartnerScreen}
-        options={{
-          tabBarLabel: '家庭',
-          tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="people" color={color} size={size} />
           ),
         }}
       />
@@ -111,6 +82,22 @@ const MainTabs = () => {
             <TabBarIcon name="person" color={color} size={size} />
           ),
         }}
+      />
+      {/* 隐藏入口页：不在TabBar显示，供首页卡片/我的页跳转 */}
+      <Tab.Screen
+        name="BabyBag"
+        component={BabyBagScreen}
+        options={{ tabBarButton: () => null, tabBarLabel: '待产包' }}
+      />
+      <Tab.Screen
+        name="Ai"
+        component={AiScreen}
+        options={{ tabBarButton: () => null, tabBarLabel: 'AI助手' }}
+      />
+      <Tab.Screen
+        name="Partner"
+        component={PartnerScreen}
+        options={{ tabBarButton: () => null, tabBarLabel: '家庭' }}
       />
     </Tab.Navigator>
   )
