@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
-import { HomeScreen, RecipeScreen, CheckInScreen, BabyBagScreen, ProfileScreen, HealthScreen, AiScreen, PartnerScreen, Onboarding } from './src/screens'
+import { HomeScreen, RecipeScreen, CheckInScreen, BabyBagScreen, ProfileScreen, HealthScreen, AiScreen, PartnerScreen, ShoppingListScreen, Onboarding } from './src/screens'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
@@ -98,6 +98,11 @@ const MainTabs = () => {
         name="Partner"
         component={PartnerScreen}
         options={{ tabBarButton: () => null, tabBarLabel: '家庭' }}
+      />
+      <Tab.Screen
+        name="ShoppingList"
+        component={ShoppingListScreen}
+        options={{ tabBarButton: () => null, tabBarLabel: '采购清单' }}
       />
     </Tab.Navigator>
   )

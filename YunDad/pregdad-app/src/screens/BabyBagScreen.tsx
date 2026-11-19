@@ -9,6 +9,7 @@ import {
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
 import { COLORS } from '../constants'
 import { Card } from '../components/common'
 import { useBabyBagStore } from '../store/babybag-store'
@@ -21,6 +22,7 @@ import { useAuthStore } from '../store/auth-store'
  * - 二期入口预留：AI 智能推荐 / 一键采购清单（CPS 分佣）
  */
 export const BabyBagScreen: React.FC = () => {
+  const navigation = useNavigation<any>()
   const userId = useAuthStore((s) => s.user?.id)
   const {
     categories,
@@ -88,16 +90,16 @@ export const BabyBagScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 二期功能入口（占位，开发前不误导用户） */}
+        {/* 功能入口：一键采购(CPS已接) / AI智能推荐(二期) */}
         <View style={styles.soonRow}>
           <View style={[styles.soonCard, styles.soonDisabled]}>
             <Ionicons name="sparkles" size={18} color={COLORS.textMuted} />
-            <Text style={styles.soonText}>AI 智能推荐 · 即将上线</Text>
+            <Text style={styles.soonText}>AI 智能推荐 · 二期</Text>
           </View>
-          <View style={[styles.soonCard, styles.soonDisabled]}>
-            <Ionicons name="cart" size={18} color={COLORS.textMuted} />
-            <Text style={styles.soonText}>一键采购清单 · 即将上线</Text>
-          </View>
+          <TouchableOpacity style={styles.soonCard} activeOpacity={0.8} onPress={() => navigation.navigate('ShoppingList')}>
+            <Ionicons name="cart" size={18} color={COLORS.primary} />
+            <Text style={[styles.soonText, { color: COLORS.primary, fontWeight: '600' }]}>一键采购清单</Text>
+          </TouchableOpacity>
         </View>
 
         {/* 分类横向切换 */}
