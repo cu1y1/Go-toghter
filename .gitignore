@@ -1,0 +1,8 @@
+
+# macOS解压垃圾与备份目录
+__MACOSX/
+*.bak-upgrade/
+*.bak-upgrade
+*.bak-importfix
+*.bak-fix2
+.openclaw/
