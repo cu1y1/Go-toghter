@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true, data: movement }, { status: 201 })
+    return NextResponse.json({ success: true, data: movement }, { status: 200 })
   } catch (error) {
     console.error('Error creating fetal movement:', error)
     return NextResponse.json({ success: false, error: 'Failed to create' }, { status: 500 })
