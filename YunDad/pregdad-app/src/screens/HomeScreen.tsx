@@ -190,22 +190,22 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 快捷入口（原独立Tab收编：AI助手/待产包） */}
+        {/* 快捷入口（打卡/健康：不占页签的高频功能，从此直达） */}
         <View style={styles.section}>
           <View style={styles.quickRow}>
-            <TouchableOpacity style={styles.quickCard} activeOpacity={0.85} onPress={() => navigation.navigate('Ai')}>
-              <View style={[styles.quickIconBox, { backgroundColor: '#8B5CF615' }]}>
-                <Ionicons name="sparkles" size={22} color="#8B5CF6" />
+            <TouchableOpacity style={styles.quickCard} activeOpacity={0.85} onPress={() => navigation.navigate('CheckIn')}>
+              <View style={[styles.quickIconBox, { backgroundColor: '#10B98115' }]}>
+                <Ionicons name="checkmark-circle" size={22} color="#10B981" />
               </View>
-              <Text style={styles.quickTitle}>AI 孕产助手</Text>
-              <Text style={styles.quickSub} numberOfLines={1}>联网搜索 · 产检单解读</Text>
+              <Text style={styles.quickTitle}>每日打卡</Text>
+              <Text style={styles.quickSub} numberOfLines={1}>记录三餐 · 攒积分</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickCard} activeOpacity={0.85} onPress={() => navigation.navigate('BabyBag')}>
-              <View style={[styles.quickIconBox, { backgroundColor: COLORS.primary + '15' }]}>
-                <Ionicons name="bag-check" size={22} color={COLORS.primary} />
+            <TouchableOpacity style={styles.quickCard} activeOpacity={0.85} onPress={() => navigation.navigate('Health')}>
+              <View style={[styles.quickIconBox, { backgroundColor: '#EF444415' }]}>
+                <Ionicons name="heart" size={22} color="#EF4444" />
               </View>
-              <Text style={styles.quickTitle}>待产包</Text>
-              <Text style={styles.quickSub} numberOfLines={1}>照单准备 · 一项不落</Text>
+              <Text style={styles.quickTitle}>健康监测</Text>
+              <Text style={styles.quickSub} numberOfLines={1}>体重 · 胎动 · 产检</Text>
             </TouchableOpacity>
           </View>
         </View>

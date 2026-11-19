@@ -32,7 +32,7 @@ const MainTabs = () => {
         tabBarItemStyle: styles.tabBarItem,
       }}
     >
-      {/* 五页签：首页/食谱/打卡/健康/我的；AI助手、待产包、家庭绑定从首页/我的页入口进入，降低导航冗余 */}
+      {/* 页签（y总定版）：首页/食谱/待产包/AI助手/我的——待产包是消费转化入口必须独占页签；打卡/健康/家庭从首页与我的页进入 */}
       <Tab.Screen
         name="Home"
         component={HomeScreen}
@@ -54,22 +54,22 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name="CheckIn"
-        component={CheckInScreen}
+        name="BabyBag"
+        component={BabyBagScreen}
         options={{
-          tabBarLabel: '打卡',
+          tabBarLabel: '待产包',
           tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="checkmark-circle" color={color} size={size} />
+            <TabBarIcon name="bag-check" color={color} size={size} />
           ),
         }}
       />
       <Tab.Screen
-        name="Health"
-        component={HealthScreen}
+        name="Ai"
+        component={AiScreen}
         options={{
-          tabBarLabel: '健康',
+          tabBarLabel: 'AI助手',
           tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="heart" color={color} size={size} />
+            <TabBarIcon name="sparkles" color={color} size={size} />
           ),
         }}
       />
@@ -83,16 +83,16 @@ const MainTabs = () => {
           ),
         }}
       />
-      {/* 隐藏入口页：不在TabBar显示，供首页卡片/我的页跳转 */}
+      {/* 隐藏入口页：打卡/健康/家庭 不占页签但可导航 */}
       <Tab.Screen
-        name="BabyBag"
-        component={BabyBagScreen}
-        options={{ tabBarButton: () => null, tabBarLabel: '待产包' }}
+        name="CheckIn"
+        component={CheckInScreen}
+        options={{ tabBarButton: () => null, tabBarLabel: '打卡' }}
       />
       <Tab.Screen
-        name="Ai"
-        component={AiScreen}
-        options={{ tabBarButton: () => null, tabBarLabel: 'AI助手' }}
+        name="Health"
+        component={HealthScreen}
+        options={{ tabBarButton: () => null, tabBarLabel: '健康' }}
       />
       <Tab.Screen
         name="Partner"

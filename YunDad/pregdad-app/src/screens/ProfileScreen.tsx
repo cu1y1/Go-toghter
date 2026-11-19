@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
 import { COLORS } from '../constants'
 import { Card, ProgressBar } from '../components/common'
 import { useUserStore, useFavoriteStore } from '../store'
@@ -27,6 +28,7 @@ const APP_VERSION = '1.0.0'
  * - 待产包入口（Tab 已瘦身移除，从页签改入口卡）
  */
 export const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation<any>()
   const { user, logout, updateUser } = useUserStore()
   const { favorites } = useFavoriteStore()
   const babybag = useBabyBagStore()
@@ -151,7 +153,7 @@ export const ProfileScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.babybagEntry}
           activeOpacity={0.85}
-          onPress={() => Alert.alert('待产包', '待产包已移至「首页」快捷入口，即将以新交互回归')}
+          onPress={() => navigation.navigate('BabyBag')}
         >
           <View style={styles.babybagIconBox}>
             <Ionicons name="bag-check" size={22} color={COLORS.primary} />
