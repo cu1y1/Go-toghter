@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { getAuthUserId, unauthorized } from '@/lib/auth'
-import { aiChat, REPORT_PROMPT, getAiMode } from '@/lib/ai'
+import { aiChat, glmVision, REPORT_PROMPT, getAiMode } from '@/lib/ai'
 
 const prisma = new PrismaClient()
 
@@ -23,7 +23,7 @@ function checkRate(userId: string): boolean {
 }
 
 // POST /api/ai/report - 产检单解读
-// body: { reportText: string }（用户拍照后OCR/手动输入的报告文本；MVP阶段文本输入）
+// body: { reportText: string }（手动输入）或 { image: string }（dataURL，glm-4.5v 拍照识别）
 export async function POST(request: NextRequest) {
   try {
     const userId = getAuthUserId(request)
@@ -37,7 +37,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const reportText = typeof body.reportText === 'string' ? body.reportText.trim() : ''
+    let reportText = typeof body.reportText === 'string' ? body.reportText.trim() : ''
+
+    // 拍照识别：image（dataURL，≤4MB）→ glm-4.5v 提取报告单文字后走同一解读链路
+    if (!reportText && typeof body.image === 'string' && body.image.startsWith('data:image/')) {
+      if (body.image.length > 4 * 1024 * 1024) {
+        return NextResponse.json({ success: false, error: '图片过大，请重新拍照（≤4MB）' }, { status: 400 })
+      }
+      const vision = await glmVision(
+        body.image,
+        '这是产检报告单照片。请完整、逐行提取报告单上的文字内容（项目名/数值/单位/参考范围/提示），保持原有结构输出；模糊无法识别的字段标注[无法识别]。只输出提取的文字，不要解读。'
+      )
+      if (!vision.ok) {
+        return NextResponse.json({ success: false, error: vision.error || '图片识别失败，可改用手动输入' }, { status: 200 })
+      }
+      reportText = vision.text.trim()
+    }
+
     if (!reportText || reportText.length < 10) {
       return NextResponse.json({ success: false, error: '请粘贴产检报告单的文字内容（至少10字）' }, { status: 400 })
     }

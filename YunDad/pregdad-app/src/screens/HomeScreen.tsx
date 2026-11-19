@@ -16,8 +16,7 @@ import { useUserStore } from '../store'
 import { COLORS, MEAL_TYPES } from '../constants'
 import { Card, Badge, ProgressBar } from '../components/common'
 import { getBabySizeByWeek, getLevelByPoints } from '../utils'
-import { DailyTipCard, getTipsByWeek } from '../components/home/DailyTipCard'
-import { RecommendedRecipes, getRecommendedRecipes } from '../components/home/RecommendedRecipes'
+import { getRecommendedRecipes } from '../components/home/RecommendedRecipes'
 
 const { width } = Dimensions.get('window')
 
@@ -43,7 +42,6 @@ export const HomeScreen: React.FC = () => {
 
   const babySize = getBabySizeByWeek(userInfo.currentWeek)
   const levelInfo = getLevelByPoints(userInfo.points)
-  const tips = getTipsByWeek(userInfo.currentWeek)
   const recipes = getRecommendedRecipes()
 
   // 打卡处理
@@ -130,23 +128,16 @@ export const HomeScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* 等级进度 */}
-          <View style={styles.levelProgress}>
-            <Text style={styles.levelProgressText}>
-              再获得 {levelInfo.pointsToNext} 积分升级到 Lv.{(levelInfo.level + 1)}
-            </Text>
-            <ProgressBar progress={levelInfo.progress} color="#FFF" height={4} />
-          </View>
         </LinearGradient>
 
         {/* 今日饮食计划 */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>今日饮食计划</Text>
-            <View style={styles.pointsBadge}>
-              <Ionicons name="ribbon" size={14} color={COLORS.primary} />
-              <Text style={styles.pointsText}>今日 {todayPoints} 积分</Text>
-            </View>
+            <Text style={styles.sectionTitle}>今日吃什么</Text>
+            <TouchableOpacity style={styles.allRecipesBtn} onPress={() => navigation.navigate('Recipe')} activeOpacity={0.7}>
+              <Text style={styles.allRecipesText}>全部食谱</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.mealGrid}>
@@ -177,6 +168,19 @@ export const HomeScreen: React.FC = () => {
               )
             })}
           </View>
+
+          {/* 按孕周推荐食谱（横滑，直达食谱页） */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+            {recipes.slice(0, 6).map((r: any) => (
+              <TouchableOpacity key={r.id} style={styles.recipeChip} activeOpacity={0.8} onPress={() => navigation.navigate('Recipe')}>
+                <Text style={styles.recipeChipIcon}>🍳</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recipeChipName} numberOfLines={1}>{r.name}</Text>
+                  <Text style={styles.recipeChipTag} numberOfLines={1}>{r.weekRange || r.stage || '孕期适用'}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           {/* 完成进度 */}
           <View style={styles.dailyProgress}>
@@ -210,31 +214,6 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 每日小贴士 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>每日小贴士</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tipsScroll}
-          >
-            {tips.map((tip) => (
-              <DailyTipCard
-                key={tip.id}
-                tip={tip}
-                onViewDetail={() => console.log('查看贴士详情:', tip.id)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* 推荐食谱 */}
-        <RecommendedRecipes
-          recipes={recipes}
-          onRecipeClick={(id) => console.log('点击食谱:', id)}
-          onViewAll={() => console.log('查看全部食谱')}
-        />
-
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
@@ -242,6 +221,15 @@ export const HomeScreen: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
+  allRecipesBtn: { flexDirection: 'row', alignItems: 'center' },
+  allRecipesText: { fontSize: 13, color: COLORS.primary, fontWeight: '500' },
+  recipeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: COLORS.white, borderRadius: 12, padding: 10, width: 150,
+  },
+  recipeChipIcon: { fontSize: 20 },
+  recipeChipName: { fontSize: 13, color: COLORS.text, fontWeight: '600' },
+  recipeChipTag: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

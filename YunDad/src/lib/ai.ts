@@ -96,6 +96,44 @@ async function glmChat(messages: AiChatMessage[], maxTokens: number, enableWebSe
   }
 }
 
+// 产检单拍照识删：glm-4.5v 视觉模型提取报告单文字（实测支持 base64 dataURL；外链图会报 1210）
+export async function glmVision(imageDataUrl: string, prompt: string): Promise<{ ok: boolean; text: string; error?: string }> {
+  const key = process.env.AI_API_KEY
+  if (!key) return { ok: false, text: '', error: 'AI_API_KEY 未配置' }
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60000)
+    const body = {
+      model: 'glm-4.5v',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: imageDataUrl } },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
+      max_tokens: 2048,
+      temperature: 0.3,
+    }
+    const res = await fetch(GLM_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+    if (!res.ok) return { ok: false, text: '', error: `GLM vision HTTP ${res.status}` }
+    const json = await res.json()
+    const text = json?.choices?.[0]?.message?.content
+    if (!text) return { ok: false, text: '', error: 'GLM vision 返回为空' }
+    return { ok: true, text }
+  } catch (error) {
+    return { ok: false, text: '', error: error instanceof Error ? error.message : '视觉识别失败' }
+  }
+}
+
 const YUNDAD_SYSTEM_PROMPT = `你是"孕爸爸"App 的 AI 助手，服务对象是孕期准爸爸。职责：
 1. 解答孕期常识、陪产技巧、待产准备、产检流程、营养搭配；
 2. 帮助解读产检报告单中的常见指标（只能解释指标含义与一般参考范围，不做诊断）；

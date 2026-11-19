@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Linking } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Linking, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants'
 import { useAiStore } from '../store/ai-store'
@@ -19,6 +19,7 @@ export default function AiScreen() {
   const [reportText, setReportText] = useState('')
   const [reportResult, setReportResult] = useState<string | null>(null)
   const [reportSending, setReportSending] = useState(false)
+  const [reportImage, setReportImage] = useState<string | null>(null)
   const listRef = useRef<React.ElementRef<typeof ScrollView>>(null)
 
   useEffect(() => {
@@ -36,20 +37,47 @@ export default function AiScreen() {
     await send(t)
   }, [input, send])
 
+  const pickReportImage = useCallback(async () => {
+    try {
+      const ImagePicker = await import('expo-image-picker')
+      const perm = await ImagePicker.requestCameraPermissionsAsync()
+      const libPerm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!perm.granted && !libPerm.granted) {
+        setReportResult('需要相机/相册权限才能识别报告单，请在系统设置中开启。')
+        return
+      }
+      const hasCam = perm.granted
+      const result = hasCam
+        ? await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true, allowsEditing: false })
+        : await ImagePicker.launchImageLibraryAsync({ quality: 0.5, base64: true, allowsEditing: false })
+      if (!result.canceled && result.assets?.[0]?.base64) {
+        const asset = result.assets[0]
+        const mime = asset.mimeType || 'image/jpeg'
+        const dataUrl = `data:${mime};base64,${asset.base64}`
+        setReportImage(dataUrl)
+        setReportResult(null)
+      }
+    } catch {
+      setReportResult('拍照组件加载失败，可改用手动输入报告文字。')
+    }
+  }, [])
+
   const doReport = useCallback(async () => {
-    if (reportSending || reportText.trim().length < 10) return
+    if (reportSending) return
+    if (!reportImage && reportText.trim().length < 10) return
     setReportSending(true)
     setReportResult(null)
     try {
       const { apiPost } = await import('../services/apiClient')
-      const res = await apiPost<{ content: string | null }>('/api/ai/report', { reportText })
+      const payload = reportImage ? { image: reportImage } : { reportText }
+      const res = await apiPost<{ content: string | null }>('/api/ai/report', payload)
       setReportResult(res.success && res.data?.content ? res.data.content : `解读失败：${res.error ?? '未知错误'}`)
     } catch {
       setReportResult('网络不太顺畅，请重试。')
     } finally {
       setReportSending(false)
     }
-  }, [reportText, reportSending])
+  }, [reportText, reportImage, reportSending])
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
@@ -107,17 +135,36 @@ export default function AiScreen() {
       </TouchableOpacity>
       {reportOpen && (
         <View style={styles.reportBox}>
+          <View style={styles.reportActions}>
+            <TouchableOpacity style={styles.photoBtn} onPress={pickReportImage} activeOpacity={0.8}>
+              <Ionicons name="camera-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.photoBtnText}>{reportImage ? '重拍' : '拍报告单'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sendBtn, (reportSending || (!reportImage && reportText.trim().length < 10)) && styles.sendBtnDisabled]}
+              onPress={doReport}
+              disabled={reportSending || (!reportImage && reportText.trim().length < 10)}
+            >
+              {reportSending ? <ActivityIndicator size="small" color={COLORS.white} /> : <Text style={styles.sendBtnText}>解读</Text>}
+            </TouchableOpacity>
+          </View>
+          {reportImage && (
+            <View style={styles.previewWrap}>
+              <Image source={{ uri: reportImage }} style={styles.previewImg} resizeMode="cover" />
+              <TouchableOpacity style={styles.previewDel} onPress={() => { setReportImage(null); setReportResult(null) }}>
+                <Ionicons name="close-circle" size={22} color={COLORS.textMuted} />
+              </TouchableOpacity>
+              <Text style={styles.previewHint}>已就绪，点击「解读」开始分析</Text>
+            </View>
+          )}
           <TextInput
             style={styles.reportInput}
             multiline
-            placeholder="粘贴产检报告单文字（B超/血检等），至少10字"
+            placeholder="或粘贴产检报告单文字（B超/血检等）"
             placeholderTextColor={COLORS.textMuted}
             value={reportText}
             onChangeText={setReportText}
           />
-          <TouchableOpacity style={[styles.sendBtn, reportSending && styles.sendBtnDisabled]} onPress={doReport} disabled={reportSending}>
-            {reportSending ? <ActivityIndicator size="small" color={COLORS.white} /> : <Text style={styles.sendBtnText}>解读</Text>}
-          </TouchableOpacity>
           {!!reportResult && (
             <ScrollView style={styles.reportResult} maximumZoomScale={1}>
               <Text style={styles.reportResultText}>{reportResult}</Text>
@@ -169,6 +216,17 @@ const styles = StyleSheet.create({
   sourcesBox: { marginTop: 8, paddingTop: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e5e7eb' },
   sourcesTitle: { color: COLORS.textMuted, fontSize: 11, marginBottom: 2 },
   sourceLink: { color: COLORS.primary, fontSize: 12, lineHeight: 18 },
+  reportActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  photoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: COLORS.primary, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.white,
+  },
+  photoBtnText: { color: COLORS.primary, fontSize: 13, fontWeight: '600' },
+  previewWrap: { marginBottom: 10, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.border },
+  previewImg: { width: '100%', height: 140 },
+  previewDel: { position: 'absolute', top: 8, right: 8 },
+  previewHint: { position: 'absolute', bottom: 6, left: 10, right: 10, fontSize: 11, color: COLORS.white, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 },
   reportEntry: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border },
   reportEntryText: { fontSize: 13, color: COLORS.primary, marginLeft: 6 },
   reportBox: { backgroundColor: COLORS.white, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
